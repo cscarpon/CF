@@ -244,15 +244,14 @@ transform_polygon_crs <- function(source_polygon, target_polygon, crs) {
 
 mask_pc <- function(pc) {
     
+    # Step 1: reduce the number of points in the point cloud
     decimate <- lidR::decimate_points(pc, random(1))
     
+    # Step 2: Keep only unique points
     unique_points <- decimate@data %>%
       dplyr::distinct(X, Y)  # Keep only unique X, Y pairs
     
-    coords_sf <- sf::st_as_sf(unique_points[, c("X", "Y")], 
-                              coords = c("X", "Y"), 
-                              crs = lidR::projection(pc))
-    
+
     # Step 3: Convert the decimated points to an sf object
     coords_sf <- sf::st_as_sf(decimate@data[,c("X", "Y")], coords = c("X", "Y"), crs = lidR::projection(pc))
     

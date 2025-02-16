@@ -275,16 +275,17 @@
       
       add_message("Running ICP on Source and Target", rv)
       
-      showModal(modalDialog("Running ICP on Source and Target", footer= NULL))
+      showModal(modalDialog("Running ICP on Source and Target", footer = NULL))
       
       # Source the Python script
-      icp_module <- paste0(getwd(), "/py/icp_pdal.py")
+      icp_module <- paste0(getwd(), "/py/icp_open3d.py")
       
       tryCatch({
+        reticulate::use_condaenv("icp_conda")
         reticulate::source_python(icp_module)
         
         # Create instance of the ICP class
-        icp_aligner <- pdal_icp(rv$sc1$filepath, rv$sc2$filepath)
+        icp_aligner <- Open3DICP(rv$sc1$filepath, rv$sc2$filepath, icp_method="point-to-plane")
         
         # Call the align method
         aligned_file_path <- icp_aligner$align()
