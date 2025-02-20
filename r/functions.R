@@ -91,7 +91,7 @@ process_raster <- function(source, target, source_mask, target_mask,  method = "
   return(list(source = source, target = target, vect_mask = union_vect))
 }
 
-# Function to generate CHM and classify the differences
+# Function to generate ndsm and classify the differences
 diff_classify <- function(earlier, later) {
     # Compute the difference
     diff <- later - earlier
@@ -275,8 +275,37 @@ mask_pc <- function(pc) {
     return(final_sf)
 }
 
+# Function to project and mask raster
+processRaster <- function(raster, mask) {
+  if (!is.null(raster) && !is.null(mask)) {
+    raster_m <- terra::project(raster, "EPSG:4326")
+    raster_m <- terra::mask(raster_m, mask)
+  } else if (!is.null(raster)) {
+    raster_m <- terra::project(raster, "EPSG:4326")
+  } else {
+    raster_m <- NULL
+  }
+  return(raster_m)
+}
 
-displayMap <- function(dtm, chm, chm_diff, area_mask) {
+addRasterLayer <- function(map, raster, name, color_palette) {
+  if (!is.null(raster)) {
+    pal <- colorNumeric(color_palette, domain = values(raster), na.color = "transparent")
+    map <- addRasterImage(map, raster, colors = pal, group = name, maxBytes = Inf, opacity = 1)
+  }
+  return(map)
+}
+
+# Function to add legend
+addLegendLayer <- function(map, raster, title, layerId, color_palette) {
+  if (!is.null(raster)) {
+    pal <- colorNumeric(color_palette, domain = values(raster), na.color = "transparent")
+    map <- addLegend(map, pal = pal, values = values(raster), position = "bottomright", title = title, layerId = layerId, opacity = 1)
+  }
+  return(map)
+}
+
+displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
   m <- leaflet::leaflet() %>%
     leaflet::addTiles() %>%
     leaflet::addScaleBar(position = "bottomleft") %>%
@@ -287,98 +316,77 @@ displayMap <- function(dtm, chm, chm_diff, area_mask) {
       activeColor = "#3D535D",
       completedColor = "#7D4479")
     # Add north arrow as an image
-    # leafem::addLogo(file.path("./www/northNA.png"), src = "local", position = "topleft", width = 50, height = 50)
-  # Transform mask if it's not NULL
-  if (!is.null(area_mask)) {
-    area_mask <- terra::project(area_mask, "EPSG:4326")
-  }
   
-  # Mask and project DTM if it's not NULL and mask is not NULL
-  if (!is.null(dtm) && !is.null(area_mask)) {
-    dtm_m <- terra::project(dtm, "EPSG:4326")
-    dtm_m <- terra::mask(dtm_m, area_mask)
-  } else if (!is.null(dtm)) {
-    dtm_m <- terra::project(dtm, "EPSG:4326")
-  } else {
-    dtm_m <- NULL
-  }
-  
-  # Mask and project CHM if it's not NULL and mask is not NULL
-
-  if (!is.null(chm) && !is.null(area_mask)) {
-    chm_m <- terra::project(chm, "EPSG:4326")
-    chm_m <- terra::mask(chm_m, area_mask)
-
-  } else if (!is.null(chm)) {
-    chm_m <- terra::project(chm, "EPSG:4326")
-  } else {
-    chm_m <- NULL
-  }
-  
-  # Project chm_diff if it's not NULL
-  if (!is.null(chm_diff)) {
-    diff <- terra::project(chm_diff, "EPSG:4326")
-    diff <- terra::clamp(diff, 1, 5)
-    diff_round <- round(diff)
-  } else {
-    diff_round <- NULL
-  }
-  
-  # Add DTM raster image if it's not NULL
-  if (!is.null(dtm_m)) {
-    pal_dtm <- colorNumeric("magma", domain = values(dtm_m), na.color = "transparent")
-    m <- addRasterImage(m, dtm_m, colors = pal_dtm, group = "DTM", maxBytes = Inf, opacity = 1)
-  }
-  
-  # Add CHM raster image if it's not NULL
-  if (!is.null(chm_m)) {
-    pal_chm <- colorNumeric("magma", domain = values(chm_m), na.color = "transparent")
-    m <- addRasterImage(m, chm_m, colors = pal_chm, group = "nDSM", maxBytes = Inf, opacity = 1)
-  }
-  
-  # Add chm_diff raster image with legend if it's not NULL
-  if (!is.null(diff_round)) {
-    colors <- c("#555599", "#b2abd2",   "#f7f7f7", "#9AE696","#448F3F")      # Updated colors
-    pal_diff <- colorNumeric(palette = colors, domain = values(diff_round), na.color = "transparent")
-  
-    m <- addRasterImage(m, diff_round, colors = pal_diff, group = "Diff", maxBytes = Inf, opacity = 1)
-  }
-  
-  # Add mask polygons if area_mask is not NULL
-  if (!is.null(area_mask)) {
-    m <- addPolygons(m, data = st_as_sf(area_mask, crs = 4326), color = "black", fill = FALSE, group = "Mask")
-  }
-  
-  # Add layers control with all layers turned off initially except the mask
-  overlayGroups <- c()
-  if (!is.null(dtm_m)) overlayGroups <- c(overlayGroups, "DTM")
-  if (!is.null(chm_m)) overlayGroups <- c(overlayGroups, "nDSM")
-  if (!is.null(diff_round)) overlayGroups <- c(overlayGroups, "Diff")
-  if (!is.null(area_mask)) overlayGroups <- c(overlayGroups, "Mask")
-  
-  m <- addLayersControl(m, overlayGroups = overlayGroups, options = layersControlOptions(collapsed = FALSE))
-  
-  # Hide all layers except the mask
-  if (!is.null(dtm_m)) m <- hideGroup(m, "DTM")
-  if (!is.null(chm_m)) m <- hideGroup(m, "nDSM")
-  if (!is.null(diff_round)) m <- hideGroup(m, "Diff")
-  m <- showGroup(m, "Mask")
-  
-  # Add legends for each layer but do not show them initially
-  if (!is.null(dtm_m)) {
-    m <- addLegend(m, pal = pal_dtm, values = values(dtm_m), position = "bottomright", title = "Digital Terrain Model (m)", layerId = "dtmLegend", opacity = 1)
-  }
-  
-  if (!is.null(chm_m)) {
-    m <- addLegend(m, pal = pal_chm, values = values(chm_m), position = "bottomright", title = "Normalized Height Model (m)", layerId = "chmLegend", opacity = 1)
-  }
-  
-  if (!is.null(diff_round)) {
-    labels <- c("< -10", "-10 to -0.5", "-0.5 to 0.5", "0.5 to 10", "> 10")
-    m <- addLegend(m, colors = colors, labels = labels, position = "bottomright", title = "Change in Normalized Height Model (m)", layerId = "diffLegend", opacity = 1)
-  }
-  
-  return(m)
+    # Transform mask if it's not NULL
+    if (!is.null(area_mask)) {
+      area_mask <- terra::project(area_mask, "EPSG:4326")
+    }
+    
+    # Process all rasters
+    dtm1_m <- processRaster(dtm1, area_mask)
+    ndsm1_m <- processRaster(ndsm1, area_mask)
+    dtm2_m <- processRaster(dtm2, area_mask)
+    ndsm2_m <- processRaster(ndsm2, area_mask)
+    
+    # Project ndsm_diff if it's not NULL
+    if (!is.null(ndsm_diff)) {
+      diff <- terra::project(ndsm_diff, "EPSG:4326")
+      diff <- terra::clamp(diff, 1, 5)
+      diff_round <- round(diff)
+    } else {
+      diff_round <- NULL
+    }
+    
+    # Add DTM and nDSM layers
+    m <- addRasterLayer(m, dtm1_m, "DTM (Source)", "magma")
+    m <- addRasterLayer(m, dtm2_m, "DTM (Target)", "magma")
+    m <- addRasterLayer(m, ndsm1_m, "nDSM (Source)", "magma")
+    m <- addRasterLayer(m, ndsm2_m, "nDSM (Target)", "magma")
+    
+    # Add ndsm_diff raster image with legend if it's not NULL
+    if (!is.null(diff_round)) {
+      colors <- c("#555599", "#b2abd2",   "#f7f7f7", "#9AE696","#448F3F")      # Updated colors
+      pal_diff <- colorNumeric(palette = colors, domain = values(diff_round), na.color = "transparent")
+    
+      m <- addRasterImage(m, diff_round, colors = pal_diff, group = "Diff", maxBytes = Inf, opacity = 1)
+    }
+    
+    # Add mask polygons if area_mask is not NULL
+    if (!is.null(area_mask)) {
+      m <- addPolygons(m, data = st_as_sf(area_mask, crs = 4326), color = "black", fill = FALSE, group = "Mask")
+    }
+    
+    # Add layers control with all layers turned off initially except the mask
+    overlayGroups <- c()
+    if (!is.null(dtm1_m)) overlayGroups <- c(overlayGroups, "DTM (Source)")
+    if (!is.null(dtm2_m)) overlayGroups <- c(overlayGroups, "DTM (Target)")
+    if (!is.null(ndsm1_m)) overlayGroups <- c(overlayGroups, "nDSM (Source)")
+    if (!is.null(ndsm2_m)) overlayGroups <- c(overlayGroups, "nDSM (Target)")
+    if (!is.null(diff_round)) overlayGroups <- c(overlayGroups, "Diff")
+    if (!is.null(area_mask)) overlayGroups <- c(overlayGroups, "Mask")
+    
+    m <- addLayersControl(m, overlayGroups = overlayGroups, options = layersControlOptions(collapsed = FALSE))
+    
+    # Hide all layers except the mask
+    for (group in overlayGroups) {
+      if (group != "Mask") {
+        m <- hideGroup(m, group)
+      }
+    }
+    m <- showGroup(m, "Mask")
+    
+    # Add legends for each layer but do not show them initially
+    m <- addLegendLayer(m, dtm1_m, "DTM (Source)", "dtm1Legend", "magma")
+    m <- addLegendLayer(m, dtm2_m, "DTM (Target)", "dtm2Legend", "magma")
+    m <- addLegendLayer(m, ndsm1_m, "nDSM (Source)", "ndsm1Legend", "magma")
+    m <- addLegendLayer(m, ndsm2_m, "nDSM (Target)", "ndsm2Legend", "magma")
+    
+    if (!is.null(diff_round)) {
+      labels <- c("< -10", "-10 to -0.5", "-0.5 to 0.5", "0.5 to 10", "> 10")
+      m <- addLegend(m, colors = colors, labels = labels, position = "bottomright", title = "Change in Normalized Height Model (m)", layerId = "diffLegend", opacity = 1)
+    }
+    
+    return(m)
 }
 
 displayIndex <- function(index) {
@@ -428,9 +436,9 @@ add_message <- function(message, rv, session = session) {
   timestamp <- format(Sys.time(), "%Y-%m-%d %H:%M:%S")
   full_message <- paste0(timestamp, ": ", message)
   
-  # Update the reactive values and ensure reactivity with isolate
+  # Update the reactive values and **prepend** the new message to the top
   shiny::isolate({
-    rv$console_output <- c(rv$console_output, full_message)
+    rv$console_output <- c(full_message, rv$console_output)  # Prepend instead of append
   })
   
   # Use the session to flush the console
@@ -451,19 +459,12 @@ updateOutNum <- function(rv, session = session) {
   rv$out_num <- length(list.files(rv$out_dir))
 }
 
-create_directories <- function(data_dir, save_dir) {
-  if (!dir.exists(data_dir)) {
-    dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
-    message(paste("Created directory:", data_dir))
+create_directories <- function(in_dir) {
+  if (!dir.exists(in_dir)) {
+    dir.create(in_dir, recursive = TRUE, showWarnings = FALSE)
+    message(paste("Created directory:", in_dir))
   } else {
-    message(paste("Directory already exists:", data_dir))
-  }
-  
-  if (!dir.exists(save_dir)) {
-    dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
-    message(paste("Created directory:", save_dir))
-  } else {
-    message(paste("Directory already exists:", save_dir))
+    message(paste("Directory already exists:", in_dir))
   }
 }
 
@@ -481,7 +482,6 @@ count_time <- function(expr) {
 
 noise_filter_buildings <- function(laz, area_mask, footprint,  k_sor1 = 5, m_sor1 = 3, k_sor2 = 20, m_sor2 = 5) {
 
-  
   start.time <- Sys.time()
   
   # Step 1: Create a unique PointID in the original LAS
@@ -608,4 +608,33 @@ diff_values <- function(raster) {
   
   return(class_freq)
 
+}
+
+pc_metadata <- function(original_las, aligned_las, crs) {
+  # Ensure both LAS objects are valid
+  if (is.null(original_las) || is.null(aligned_las)) {
+    stop("Original or aligned LAS object is NULL.")
+  }
+  
+  # Extract LAS data
+  original_data <- original_las@data
+  aligned_data <- aligned_las@data
+  
+  # Ensure row count consistency to prevent mismatches
+  min_len <- min(nrow(original_data), nrow(aligned_data))
+  original_data <- original_data[1:min_len, ]
+  aligned_data <- aligned_data[1:min_len, ]
+  
+  # Replace XYZ coordinates while retaining original metadata
+  original_data$X <- aligned_data$X
+  original_data$Y <- aligned_data$Y
+  original_data$Z <- aligned_data$Z
+  
+  # Update LAS object with new coordinates
+  original_las@data <- original_data
+  
+  # Restore original CRS
+  sf::st_crs(original_las) <- crs
+  
+  return(original_las)
 }
