@@ -3,8 +3,8 @@ spatial_container <- setRefClass(
   fields = list(
     xyz = "data.frame",
     LPC = "LAS",
-    CHM = "SpatRaster",
-    CHM_raw = "SpatRaster",
+    ndsm = "SpatRaster",
+    ndsm_raw = "SpatRaster",
     DTM = "SpatRaster",
     DTM_raw = "SpatRaster",
     index = "sfc",
@@ -13,6 +13,7 @@ spatial_container <- setRefClass(
     filepath =  "character",
     filename = "character"
   ),
+  
   methods = list(
     initialize = function(file_path = character(0)) {
       .self$filepath <- file_path
@@ -24,8 +25,8 @@ spatial_container <- setRefClass(
       #create a dummy raster
       dummy_spat <- terra::rast(xmin = 0, xmax = 1, ymin = 0, ymax = 1, resolution = 1, vals = NA)
       .self$DTM <- dummy_spat
-      .self$CHM <- dummy_spat
-      
+      .self$ndsm <- dummy_spat
+
       if (ext == "xyz") {
         
         #read the x,y,z file
@@ -63,21 +64,22 @@ spatial_container <- setRefClass(
         
         #Read the las files
         las <- lidR::readLAS(file_path)
+        las_crs <- sf::st_crs(las)
         
         #append the new las file to the list
         .self$LPC <<-  las
         
         #create and append the extent to the index
         
-        las_sf <- sf::st_as_sf(las@data, coords = c("X", "Y"))
+        las_sf <- sf::st_as_sf(las@data, coords = c("X", "Y"), crs = las_crs)
         
         # Step 3: Get the bounding box
-        las_extent <- sf::st_as_sfc(sf::st_bbox(las_sf))
-        sf::st_crs(las_extent) <- sf::st_crs(las)
+        las_extent <- sf::st_as_sfc(sf::st_bbox(las_sf), crs = las_crs)
         
         .self$index <<-  las_extent
       }
     },
+    
     set_crs = function(crs) {
       
       crs <- as.integer(crs)
@@ -103,15 +105,19 @@ spatial_container <- setRefClass(
         .self$index <- sf::st_transform(.self$index, crs)
       }
     },
+    
     get_data = function() {
       return(.self$xyz)
     }, 
+    
     get_lpc = function() {
       return(.self$LPC)
     },
+    
     to_xyz = function(path) {
       write.table(.self$xyz[,c("X", "Y", "Z")], path, row.names = FALSE, col.names = FALSE, quote = FALSE, sep = " ")
     },
+    
     to_dtm = function(resolution = 1) {
       ground <- lidR::filter_ground(.self$LPC)
       dtm <- lidR::rasterize_terrain(ground, resolution, tin())
@@ -120,41 +126,40 @@ spatial_container <- setRefClass(
       .self$DTM  <- dtm_clip
     },
     
-    to_chm = function(resolution = 1, footprints) {
-      fill_na <- function(x, i=5) { if (is.na(x)[i]) { return(mean(x, na.rm = TRUE)) } else {return(x[i])}}
-      w <- matrix(1, 3, 3)
+    to_ndsm = function(resolution = 1) {
+      
       nlas <- .self$LPC - .self$DTM
-      chm <- lidR::rasterize_canopy(nlas, res = resolution, p2r(0.2, na.fill = tin()))
-      filled <- terra::focal(chm, w, fun = fill_na)
+
+      ndsmfull <- lidR::rasterize_canopy(nlas, res = resolution, p2r(0.6))
+     
+       # Set NA values to 0 after rasterization
+    
+      ndsmfull[is.na(ndsmfull)] <- 0
+      
+      filled <- terra::focal(ndsmfull, w = matrix(1, 5, 5), fun = median, na.rm = TRUE)
+      
       clamp <- terra::clamp(filled, lower = 0)
-      bbox_area <- sf::st_bbox(.self$mask) %>% 
-        sf::st_as_sfc(crs = sf::st_crs(.self$mask))
       
-      if (sf::st_crs(footprints) != sf::st_crs(.self$mask)) {
-        footprints <- sf::st_transform(footprints, sf::st_crs(.self$mask))
-      } 
-      
-      mask_diff <- sf::st_difference(bbox_area, footprints)
-      vect_build <- terra::vect(mask_diff)
-      
-      chm_builds <- terra::mask(clamp, vect_build, updatevalue = 0 )
-      
-      .self$CHM_raw <- chm_builds
-      chm_clip <- terra::mask(chm_builds, terra::vect(.self$mask))
-      .self$CHM <- chm_clip
+      .self$ndsm_raw <- clamp
+      .self$ndsm <- clamp
     },
+    
     save_mask = function(path) {
       sf::st_write(.self$mask, path)
     },
+    
     save_las = function(path) {
       lidR::writeLAS(.self$LPC, path)
     },
+    
     save_dtm = function(path) {
       terra::writeRaster(.self$DTM, path, gdal = c("COMPRESS=LZW"), overwrite = TRUE)
     },
-    save_chm = function(path) {
-      terra::writeRaster(.self$CHM, path, gdal = c("COMPRESS=LZW"), overwrite = TRUE)
+    
+    save_ndsm = function(path) {
+      terra::writeRaster(.self$ndsm, path, gdal = c("COMPRESS=LZW"), overwrite = TRUE)
     },
+    
     save_sc = function(path) {
       save(.self, file = path)
     }
