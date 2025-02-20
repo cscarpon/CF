@@ -72,6 +72,12 @@ server = function(input, output, session) {
     shinyjs::toggleState("ndsm2", !is.null(rv$sc2))
   })
   
+  output$leafletmap <- leaflet::renderLeaflet({
+    leaflet() %>%
+      addTiles() %>%
+      setView(lng = -79.3832, lat = 43.6532, zoom = 11)  # Example: Toronto
+  })
+  
   # Upload files
   observeEvent(input$upload_file, {
     req(input$upload_file, rv)
@@ -336,7 +342,7 @@ server = function(input, output, session) {
     icp_module <- paste0(getwd(), "/py/icp_open3d.py")
     
     tryCatch({
-      reticulate::use_condaenv("icp_conda")
+      # reticulate::use_condaenv("icp_conda")
       reticulate::source_python(icp_module)
       
       # Run ICP
@@ -600,9 +606,16 @@ server = function(input, output, session) {
   observeEvent(input$plot_results, {
     output$plot2D <- renderPlot({
       req(rv$classified_diff)
-      plot_stats(rv$classified_diff)
-    })
+      
+      # Adjust plot margins dynamically
+      p <- plot_stats(rv$classified_diff) + 
+        theme(plot.margin = margin(0, 0, 0, 0))  # Top, Right, Bottom, Left
+      
+      print(p)  # Ensure the plot is printed correctly
+    }, height = 400, width = "auto")  # Adjust height if needed
   })
+  
+
   
   ##Plot Webmap
   
@@ -616,7 +629,6 @@ server = function(input, output, session) {
       print(paste("An error occurred while plotting the map:", e$message))
     })
   })
-  
   
   observeEvent(input$leafletmap_groups, {
     legend <- NULL
@@ -668,6 +680,15 @@ server = function(input, output, session) {
                     layerId = "diffLegend", opacity = 1)
       }
     }
+  })
+  
+  # Observe Screenshot Button Click
+  observeEvent(input$screenshot_btn, {
+    shinyscreenshot::screenshot(
+      id = "leafletmap",  # Capture the Leaflet map
+      scale = 2,          # Increase resolution
+      filename = "map_screenshot"
+    )
   })
   
   ## Save Buttons
@@ -792,20 +813,9 @@ server = function(input, output, session) {
     in_dir <- isolate(rv$in_dir)
     out_dir <- isolate(rv$out_dir)
     
-    # Helper function to delete all files in a directory
-    delete_all_files <- function(dir) {
-      if (dir.exists(dir)) {
-        files <- list.files(dir, full.names = TRUE)
-        lapply(files, function(file) {
-          if (file.exists(file)) {
-            file.remove(file)
-          }
-        })
-        print(paste("Deleted all files in directory:", dir))
-      } else {
-        print(paste("Directory does not exist:", dir))
-      }
-    }
+    # Delete everything in the ./tmp/ directory
+    tmp_dir <- file.path(getwd(),"tmp/")
+
     
     # Delete specific files from in_dir (retain base files)
     if (dir.exists(in_dir)) {
@@ -828,7 +838,31 @@ server = function(input, output, session) {
       warning("in_dir does not exist:", in_dir)
     }
     
-    # Delete all files in out_dir
-    delete_all_files(out_dir)
+    
+    if (dir.exists(out_dir)) {
+      
+      # Delete everything in the ./tmp/ directory
+      delete_all_files(tmp_dir)
+      
+      # OPTIONAL: Remove empty directories after deleting files
+      unlink(tmp_dir, recursive = TRUE)
+      dir.create(tmp_dir)  # Recreate the directory if needed
+      
+    } else {
+      warning("The ./tmp/ directory does not exist.")
+    }
+    
+    if (dir.exists(tmp_dir)) {
+      
+      # Delete everything in the ./tmp/ directory
+      delete_all_files(tmp_dir)
+    
+      # OPTIONAL: Remove empty directories after deleting files
+      unlink(tmp_dir, recursive = TRUE)
+      dir.create(tmp_dir)  # Recreate the directory if needed
+    
+    } else {
+      warning("The ./tmp/ directory does not exist.")
+    }
   })
 }

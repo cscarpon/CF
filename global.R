@@ -20,7 +20,11 @@ library(rmapshaper)
 library(nngeo)
 library(shinyWidgets)
 library(shinyBS)
+library(shinyscreenshot)
 
 options(shiny.reactlog = TRUE)
 options(shiny.maxRequestSize = 4073741824)
 lidR::set_lidr_threads(6)
+
+
+

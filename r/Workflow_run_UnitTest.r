@@ -4,6 +4,12 @@ source("r/functions.R")
 source("r/spatial_container.R")
 source("r/meta_obj.R")
 
+# renv::install(c("shiny", "shinyjs", "dplyr", "rgl", "terra", "lidR", "sf", "ggplot2", 
+#                 "scales", "leaflet", "leaflet.extras", "htmlwidgets", "reticulate", 
+#                 "zip", "leafem", "stringr", "rmapshaper", "nngeo", "shinyWidgets", 
+#                 "shinyBS", "shinyscreenshot"))
+
+
 #change this based on CPU
 set_lidr_threads(10)
 
@@ -13,9 +19,6 @@ sunny_bound <- st_transform(sunny_bound, crs = 26917)
 buildings <- sf::st_read(file.path("./data/SB_Buildings.shp"))
 buildings <- sf::st_transform(buildings, crs = 26917)
 
-#test
-
-#Methodsdata:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAAbElEQVR4Xs2RQQrAMAgEfZgf7W9LAguybljJpR3wEse5JOL3ZObDb4x1loDhHbBOFU6i2Ddnw2KNiXcdAXygJlwE8OFVBHDgKrLgSInN4WMe9iXiqIVsTMjH7z/GhNTEibOxQswcYIWYOR/zAjBJfiXh3jZ6AAAAAElFTkSuQmCC
 
 # to_dtm()        save_las()
 # to_chm()        save_dtm()

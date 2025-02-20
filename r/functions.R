@@ -134,61 +134,50 @@ diff_numbers <- function(raster){
 plot_stats <- function(difference_raster) {
   # Get the values of the raster
   raster_values <- terra::values(difference_raster)
+  raster_values <- raster_values[!is.na(raster_values)]  # Remove NA values
   
-  # Remove NA values if necessary
-  raster_values <- raster_values[!is.na(raster_values)]
-  
-  # Get the count of each class
   class_counts <- table(raster_values)
-  
-  # Calculate the total number of cells
   total_cells <- sum(class_counts)
-  
-  # Calculate the percentage of each class
   class_percentages <- (class_counts / total_cells) * 100
   
-  # Define class labels (no wrapping, shorter labels to fit on one line)
-
-  class_labels <- c("Large decrease (< -10m)",
-                    "Decrease (-0.5m to -10m)",
-                    "Minimal change (-0.5m to 0.5m)",
-                    "Gain (0.5m to 10m)",
-                    "Large Gain (> 10m)")
-
+  # Define class labels (Shortened & Wrapped)
+  class_labels <- c(
+    "Large Decrease (< -10m)",
+    "Decrease (-0.5m to -10m)",
+    "Minimal Change(-0.5m to 0.5m)",
+    "Gain (0.5m to 10m)",
+    "Large Gain (> 10m)"
+  )
   
-  # Create a data frame for plotting
   plot_data <- data.frame(
     class = factor(names(class_counts), levels = c("1", "2", "3", "4", "5")),
     count = as.numeric(class_counts),
     percentage = as.numeric(class_percentages)
   )
   
-  # Update factor levels for class to preserve the order
   plot_data$class <- factor(plot_data$class, levels = c("1", "2", "3", "4", "5"), labels = class_labels)
   
-  # Create the bar chart
-  # Create the bar chart
+  # Create the bar chart with wrapped labels
   ggplot2::ggplot(plot_data, aes(x = class, y = count, fill = class)) +
-
     geom_bar(stat = "identity", color = "black") +
-    geom_text(aes(label = sprintf("%.1f%%", percentage)), vjust = -0.5, size = 4) + # Add percentages on top
+    geom_text(aes(label = sprintf("%.1f%%", percentage)), vjust = -0.5, size = 4) + 
     labs(x = "Loss and Gain", y = "Area (m^2)", fill = "Class") +
     ggtitle("Raster Statistics for Change Detection") +
-    scale_fill_manual(
-      values = c("#555599", "#b2abd2",   "#f7f7f7", "#9AE696","#448F3F" )  ,  # Updated colors
-      drop = FALSE
-    ) +
+    scale_fill_manual(values = c("#555599", "#b2abd2", "#f7f7f7", "#9AE696", "#448F3F"), drop = FALSE) +
     theme_minimal(base_size = 15) +
     theme(
       axis.title = element_text(size = 16, face = "bold"),
       axis.text = element_text(size = 14),
-      axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Rotate labels 45 degrees
-      legend.title = element_text(size = 12, face = "bold"), # Smaller legend title
-      legend.text = element_text(size = 10),  # Smaller legend text
-      legend.key.size = unit(0.6, "cm"),  # Smaller legend key size
-      plot.title = element_text(size = 18, face = "bold", hjust = 0.5), legend.position = "right") +
+      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5),  # 🔹 Remove angle, center text
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 10),
+      legend.key.size = unit(0.6, "cm"),
+      plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      legend.position = "right"
+    ) +
     scale_y_continuous(labels = comma)
 }
+
 
 # Show DF
 
@@ -637,4 +626,19 @@ pc_metadata <- function(original_las, aligned_las, crs) {
   sf::st_crs(original_las) <- crs
   
   return(original_las)
+}
+
+# Helper function to delete all files in a directory
+delete_all_files <- function(dir) {
+  if (dir.exists(dir)) {
+    files <- list.files(dir, full.names = TRUE)
+    lapply(files, function(file) {
+      if (file.exists(file)) {
+        file.remove(file)
+      }
+    })
+    print(paste("Deleted all files in directory:", dir))
+  } else {
+    print(paste("Directory does not exist:", dir))
+  }
 }

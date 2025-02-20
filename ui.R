@@ -19,6 +19,13 @@ ui <- navbarPage(
           align-items: center; /* Center buttons vertically */
         }
         .button-container .btn { width: auto; min-width: 150px; height: 40px; } /* Ensure fixed height */
+        
+        /* Ensure 'Screenshot' button is aligned properly */
+        .screenshot-container {
+          display: flex;
+          justify-content: center;
+          margin-top: 10px;
+        }
       
         /* Ensure 'Confirm Point Cloud' button is on a new row */
         .confirm-container {
@@ -221,11 +228,11 @@ ui <- navbarPage(
           h4("Data Saving"),
           selectInput("io_obj", "Select PC to Save", choices = NULL),
           div(class = "button-container",
+              actionButton("screenshot_btn", "Take Screenshot"),
               actionButton("save_las", "Save LAS"),
               actionButton("save_dtm", "Save DTM"),
               actionButton("save_ndsm", "Save nDSM"),
               actionButton("save_mask", "Save Mask"),
-              actionButton("save_SC", "Save Spatial Containers"),
               downloadButton("downloadData", "Save All")
           ),
           
