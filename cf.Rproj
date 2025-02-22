@@ -17,8 +17,8 @@ PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
 PackageRoxygenize: rd,collate,namespace,vignette
 
-PythonType: system
-PythonVersion: 3.9.13
-PythonPath: C:/Users/cscar/AppData/Local/Programs/Python/Python39/python.exe
+PythonType: conda
+PythonVersion: 3.12.9
+PythonPath: C:/Users/cscar/anaconda3/envs/icp_conda/python.exe
 
 SpellingDictionary: en_CA
