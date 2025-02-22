@@ -92,7 +92,7 @@ process_raster <- function(source, target, source_mask, target_mask,  method = "
 }
 
 # Function to generate ndsm and classify the differences
-diff_classify <- function(earlier, later) {
+diff_classify_ndsm <- function(earlier, later) {
     # Compute the difference
     diff <- later - earlier
     
@@ -109,6 +109,23 @@ diff_classify <- function(earlier, later) {
     return(diff_class)
 }
 
+# Function to generate ndsm and classify the differences
+diff_classify_dtm <- function(earlier, later) {
+  # Compute the difference
+  diff <- later - earlier
+  
+  # Create a raster for the magnitude of change
+  # Classify the differences
+  m <- c(-Inf, -5, 1,
+         -5, -0.1, 2,
+         -0.1, 0.1, 3,
+         0.1, 5, 4,
+         5, Inf, 5)
+  # Create a matrix with the ranges for reclassification
+  rclmat <- matrix(m, ncol = 3, byrow = TRUE)
+  diff_class <- terra::classify(diff, rclmat, include.lowest = TRUE)
+  return(diff_class)
+}
 
 diff_numbers <- function(raster){
   # Get the values of the raster
@@ -256,7 +273,7 @@ mask_pc <- function(pc) {
     
     no_holes <- nngeo::st_remove_holes(sf::st_as_sf(simplified_polygon))
     
-    final_sf <- rmapshaper::ms_simplify(no_holes, keep = 0.8, weighting = 1, keep_shapes = TRUE)
+    final_sf <- rmapshaper::ms_simplify(no_holes, keep = 0.05, weighting = 0.9, keep_shapes = TRUE)
     final_sf <- sf::st_as_sf(final_sf)
     sf::st_crs(final_sf) <- sf::st_crs(pc)
     final_sf <- sf::st_transform(final_sf, crs = sf::st_crs(pc))
@@ -539,42 +556,12 @@ noise_filter <- function(laz,  k_sor1 = 5, m_sor1 = 3, k_sor2 = 20, m_sor2 = 5) 
   las_fix2 <- lidR::classify_noise(las_fix1, sor(k = k_sor2, m = m_sor2))
   las_fix2 <- lidR::filter_poi(las_fix2, Classification != 18)  # Remove noise points
   rm(las_fix1)
-
-  ground_points <- lidR::filter_ground(las_fix2)
-  
-  # las_clean contains only non-ground points
-  las_clean <- lidR::filter_poi(las_fix2, Classification != 2)  # Non-ground
-  
-  print("removing cables")
-  # Step 5: Segment transmission lines (Cables)
-  las_clean1 <- lidR::segment_shapes(las_clean, shp_line(k = 5, th1 = 30), "Cables")
-  
-  # Step 6: Join back 'Cables' classification to the original las_fix (including ground points)
-  las_fix2@data <- dplyr::left_join(las_fix2@data, las_clean1@data[, c("PointID", "Cables")], by = "PointID")
-  
-  # Remove Transmission Lines from las_clean for the next segmentation
-  las_clean2 <- lidR::filter_poi(las_clean1, Cables == "FALSE")
-  
-  print("removing poles")
-  
-  # Step 7: Segment vertical poles
-  las_clean3 <- lidR::segment_shapes(las_clean2, shp_vline(th1 = 5, k = 4), "Poles")
-  las_fix2@data <- dplyr::left_join(las_fix2@data, las_clean3@data[, c("PointID", "Poles")], by = "PointID")
-  rm(las_clean2)
-  
-  las_clean3 <- lidR::filter_poi(las_clean3, Poles == "FALSE")
-  
-  # Step 12: Filter out all points classified as Cables, Poles, Walls, or Roofs (preserve ground points)
-  
-  las_clean3@data <- las_clean3@data[, -c("Cables", "Poles")]
-  
-  las_final <- rbind(ground_points, las_clean3)
   
   end.time <- Sys.time()
   time.taken <- end.time - start.time
   print(paste0("It has taken ", time.taken, " to denoise your LAS file!"))
   
-  return(las_final)  # Return the point cloud with segmentation and ground classification retained
+  return(las_fix2)  # Return the point cloud with segmentation and ground classification retained
 }
 
 diff_values <- function(raster) {

@@ -288,7 +288,7 @@ server = function(input, output, session) {
         
       } else {
         
-        noiseless_source <- noise_filter(rv$sc1$LPC, rv$sc1$mask)
+        noiseless_source <- noise_filter(rv$sc1$LPC)
         rv$sc1$LPC <- noiseless_source
         
       }
@@ -311,7 +311,7 @@ server = function(input, output, session) {
         
       } else {
         
-        noiseless_target <- noise_filter(rv$sc2$LPC, rv$sc2$mask)
+        noiseless_target <- noise_filter(rv$sc2$LPC)
         rv$sc2$LPC <- noiseless_target
       }
       
@@ -342,7 +342,7 @@ server = function(input, output, session) {
     icp_module <- paste0(getwd(), "/py/icp_open3d.py")
     
     tryCatch({
-      # reticulate::use_condaenv("icp_conda")
+      reticulate::use_condaenv("icp_conda")
       reticulate::source_python(icp_module)
       
       # Run ICP
@@ -369,7 +369,7 @@ server = function(input, output, session) {
     removeModal()
   })
   
-  #Building the DTM for the first PC with Text Prompts
+  #Building the DTM for the first PC 
   observeEvent(input$dtm1, {
     
     showModal(modalDialog("Creating a DTM for the Source PC", footer = NULL))
@@ -545,30 +545,38 @@ server = function(input, output, session) {
   
   observeEvent(input$classify_raster, {
     # Ensure the DTMs exist and have been processed for each spatial_obj
-    req(rv$source_raster, rv$target_raster, rv$union_mask, rv$footprints, rv$resolution, rv$crs)
+    req(rv$source_raster, rv$target_raster, rv$union_mask, rv$resolution, rv$crs)
     new_message <- "Running Classification"
     add_message(new_message, rv)
     
     tryCatch({
       
-      # Create a new raster with the same extent as SB_Change and 1m resolution
-      template_raster <- terra::rast(extent = terra::ext(rv$source_raster), resolution = rv$resolution)
-      
-      
-      # Step 3: Rasterize the building polygons onto the new 1m raster grid
-      buildings_raster <- terra::rasterize(terra::vect(rv$footprints), template_raster, background = NA)
-      
-      terra::crs(buildings_raster) <- terra::crs(rv$source_raster)
-      
-      # Step 4: Set the overlapping raster cells in SB_Change to 0 where buildings exist
-      rv$source_raster[!is.na(buildings_raster)] <- 0
-      rv$target_raster[!is.na(buildings_raster)] <- 0
-      
-      classified_diff <- diff_classify(rv$source_raster, rv$target_raster)
-      diff_class <- terra::mask(classified_diff, rv$union_mask)
-      
-      # Save the processed raster in the rv list so it can be accessed elsewhere
-      rv$classified_diff <- diff_class
+      if (!is.null(rv$footprints)) {
+        # Create a new raster with the same extent as SB_Change and 1m resolution
+        template_raster <- terra::rast(extent = terra::ext(rv$source_raster), resolution = rv$resolution)
+        
+        # Step 3: Rasterize the building polygons onto the new 1m raster grid
+        buildings_raster <- terra::rasterize(terra::vect(rv$footprints), template_raster, background = NA)
+        
+        terra::crs(buildings_raster) <- terra::crs(rv$source_raster)
+        
+        # Step 4: Set the overlapping raster cells in SB_Change to 0 where buildings exist
+        rv$source_raster[!is.na(buildings_raster)] <- 0
+        rv$target_raster[!is.na(buildings_raster)] <- 0
+        
+        classified_diff <- diff_classify(rv$source_raster, rv$target_raster)
+        diff_class <- terra::mask(classified_diff, rv$union_mask)
+        
+        # Save the processed raster in the rv list so it can be accessed elsewhere
+        rv$classified_diff <- diff_class
+        
+      } else {
+        classified_diff <- diff_classify(rv$source_raster, rv$target_raster)
+        diff_class <- terra::mask(classified_diff, rv$union_mask)
+        
+        # Save the processed raster in the rv list so it can be accessed elsewhere
+        rv$classified_diff <- diff_class
+      }
       
       new_message <- "Classification Complete"
       add_message(new_message, rv)
@@ -614,8 +622,6 @@ server = function(input, output, session) {
       print(p)  # Ensure the plot is printed correctly
     }, height = 400, width = "auto")  # Adjust height if needed
   })
-  
-
   
   ##Plot Webmap
   
@@ -819,7 +825,7 @@ server = function(input, output, session) {
     
     # Delete specific files from in_dir (retain base files)
     if (dir.exists(in_dir)) {
-      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
+      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "TTP15.laz", "TTP19.laz", "TTP23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
       uploaded_files <- list.files(in_dir, full.names = TRUE)
       print("Uploaded files at session end:")
       print(uploaded_files)

@@ -168,8 +168,7 @@ ui <- navbarPage(
     fluidPage(
       sidebarLayout(
         sidebarPanel(
-          # Dark Mode Toggle
-          div(class = "dark-mode-toggle",
+          div(class = "dark-mode-toggle", 
               switchInput("dark_mode", label = NULL, value = FALSE, size = "small")
           ),
           
@@ -189,7 +188,6 @@ ui <- navbarPage(
               selectInput("selected_buildings", "Select Footprints (.shp)", choices = NULL)
           ),
           
-          # Ensure the button is always on a new row
           div(class = "confirm-container",
               actionButton("PC_confirm", "Confirm Point Cloud", class = "btn")
           ),
@@ -216,13 +214,21 @@ ui <- navbarPage(
           ),
           
           h4("Post Processing"),
-          selectInput("selected_processing", "Raster Type to Align", choices = c("","DTM", "nDSM")),
+          selectInput("selected_processing", "Raster Type to Align", choices = c("", "DTM", "nDSM")),
           div(class = "button-container",
               actionButton("align_rasters", "Align Rasters"),
               bsTooltip("align_rasters", "Alignment is required to compare the rasters"),
               actionButton("classify_raster", "Classify Rasters"),
               bsTooltip("classify_raster", "Classify rasters to identify changes in the landscape"),
               tags$hr()
+          ),
+          
+          h4("Plotting"),
+          div(class = "button-container",
+              actionButton("plot_source", "Plot Source Las"),
+              actionButton("plot_target", "Plot Target Las"),
+              actionButton("plot_leaf", "Plot to Leaflet"),
+              actionButton("plot_results", "Plot Results")
           ),
           
           h4("Data Saving"),
@@ -234,14 +240,6 @@ ui <- navbarPage(
               actionButton("save_ndsm", "Save nDSM"),
               actionButton("save_mask", "Save Mask"),
               downloadButton("downloadData", "Save All")
-          ),
-          
-          h4("Plotting"),
-          div(class = "button-container",
-              actionButton("plot_source", "Plot Source Las"),
-              actionButton("plot_target", "Plot Target Las"),
-              actionButton("plot_leaf", "Plot to Leaflet"),
-              actionButton("plot_results", "Plot Results")
           )
         ),
         
