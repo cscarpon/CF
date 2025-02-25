@@ -21,6 +21,10 @@ library(nngeo)
 library(shinyWidgets)
 library(shinyBS)
 library(shinyscreenshot)
+library(Morpho)
+library(Rvcg)
+library(FNN)  # Fast Nearest Neighbor search
+
 
 options(shiny.reactlog = TRUE)
 options(shiny.maxRequestSize = 4073741824)
