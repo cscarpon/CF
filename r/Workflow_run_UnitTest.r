@@ -11,14 +11,13 @@ source("r/meta_obj.R")
 
 
 #change this based on CPU
-set_lidr_threads(10)
+set_lidr_threads(12)
 
 sunny_bound <- st_read("G:/EMC/Projects/Sunnybrooke/Data/Boundary/Sunnybrook.shp")
 sunny_bound <- st_transform(sunny_bound, crs = 26917)
 
 buildings <- sf::st_read(file.path("./data/SB_Buildings.shp"))
 buildings <- sf::st_transform(buildings, crs = 26917)
-
 
 # to_dtm()        save_las()
 # to_chm()        save_dtm()
@@ -45,7 +44,7 @@ pc_14$set_crs(26917)
 
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
-pc_23 <- spatial_container$new(mo_dir$metadata$file_path[5])
+pc_23 <- spatial_container$new(mo_dir$metadata$file_path[4])
 pc_23$set_crs(26917)
 
 #Generating the Masks
@@ -92,9 +91,18 @@ pc_23$LPC <- noise_filter(pc_23$LPC)
 
 source_path <- file.path("./tmp/source.laz")
 target_path <- file.path("./tmp/target.laz")
+aligned_path <- file.path("./data/aligned.laz")
+
+
 
 lidR::writeLAS(pc_14$LPC, source_path)
 lidR::writeLAS(pc_23$LPC, target_path)
+
+
+source("./r/functions.R")
+# Example usage with morpho
+aligned_las <- align_las_icp_voxelized(pc_14$LPC, pc_23$LPC, aligned_path)
+
 
 # Source the Python script
 icp_module <- paste0(getwd(), "/py/icp_open3d.py")

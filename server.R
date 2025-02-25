@@ -545,39 +545,70 @@ server = function(input, output, session) {
   
   observeEvent(input$classify_raster, {
     # Ensure the DTMs exist and have been processed for each spatial_obj
-    req(rv$source_raster, rv$target_raster, rv$union_mask, rv$resolution, rv$crs)
+    req(rv$source_raster, rv$target_raster, rv$union_mask, rv$resolution, rv$crs, rv$processing)
     new_message <- "Running Classification"
     add_message(new_message, rv)
     
     tryCatch({
       
-      if (!is.null(rv$footprints)) {
-        # Create a new raster with the same extent as SB_Change and 1m resolution
-        template_raster <- terra::rast(extent = terra::ext(rv$source_raster), resolution = rv$resolution)
-        
-        # Step 3: Rasterize the building polygons onto the new 1m raster grid
-        buildings_raster <- terra::rasterize(terra::vect(rv$footprints), template_raster, background = NA)
-        
-        terra::crs(buildings_raster) <- terra::crs(rv$source_raster)
-        
-        # Step 4: Set the overlapping raster cells in SB_Change to 0 where buildings exist
-        rv$source_raster[!is.na(buildings_raster)] <- 0
-        rv$target_raster[!is.na(buildings_raster)] <- 0
-        
-        classified_diff <- diff_classify(rv$source_raster, rv$target_raster)
-        diff_class <- terra::mask(classified_diff, rv$union_mask)
-        
-        # Save the processed raster in the rv list so it can be accessed elsewhere
-        rv$classified_diff <- diff_class
-        
-      } else {
-        classified_diff <- diff_classify(rv$source_raster, rv$target_raster)
-        diff_class <- terra::mask(classified_diff, rv$union_mask)
-        
-        # Save the processed raster in the rv list so it can be accessed elsewhere
-        rv$classified_diff <- diff_class
+      if (rv$processing == "nDSM") {
+        if (!is.null(rv$footprints)) {
+          # Create a new raster with the same extent as SB_Change and 1m resolution
+          template_raster <- terra::rast(extent = terra::ext(rv$source_raster), resolution = rv$resolution)
+          
+          # Step 3: Rasterize the building polygons onto the new 1m raster grid
+          buildings_raster <- terra::rasterize(terra::vect(rv$footprints), template_raster, background = NA)
+          
+          terra::crs(buildings_raster) <- terra::crs(rv$source_raster)
+          
+          # Step 4: Set the overlapping raster cells in SB_Change to 0 where buildings exist
+          rv$source_raster[!is.na(buildings_raster)] <- 0
+          rv$target_raster[!is.na(buildings_raster)] <- 0
+          
+          classified_diff <- diff_classify_ndsm(rv$source_raster, rv$target_raster)
+          diff_class <- terra::mask(classified_diff, rv$union_mask)
+          
+          # Save the processed raster in the rv list so it can be accessed elsewhere
+          rv$classified_diff <- diff_class
+          
+        } else {
+          classified_diff <- diff_classify_ndsm(rv$source_raster, rv$target_raster)
+          diff_class <- terra::mask(classified_diff, rv$union_mask)
+          
+          # Save the processed raster in the rv list so it can be accessed elsewhere
+          rv$classified_diff <- diff_class
+          
+          new_message <- "Classification Complete"
+          add_message(new_message, rv)
+        }
+      } else if (rv$processing == "DTM") {
+        if (!is.null(rv$footprints)) {
+          # Create a new raster with the same extent as SB_Change and 1m resolution
+          template_raster <- terra::rast(extent = terra::ext(rv$source_raster), resolution = rv$resolution)
+          
+          # Step 3: Rasterize the building polygons onto the new 1m raster grid
+          buildings_raster <- terra::rasterize(terra::vect(rv$footprints), template_raster, background = NA)
+          
+          terra::crs(buildings_raster) <- terra::crs(rv$source_raster)
+          
+          # Step 4: Set the overlapping raster cells in SB_Change to 0 where buildings exist
+          rv$source_raster[!is.na(buildings_raster)] <- 0
+          rv$target_raster[!is.na(buildings_raster)] <- 0
+          
+          classified_diff <- diff_classify_dtm(rv$source_raster, rv$target_raster)
+          diff_class <- terra::mask(classified_diff, rv$union_mask)
+          
+          # Save the processed raster in the rv list so it can be accessed elsewhere
+          rv$classified_diff <- diff_class
+          
+        } else {
+          classified_diff <- diff_classify_dtm(rv$source_raster, rv$target_raster)
+          diff_class <- terra::mask(classified_diff, rv$union_mask)
+          
+          # Save the processed raster in the rv list so it can be accessed elsewhere
+          rv$classified_diff <- diff_class
+        }
       }
-      
       new_message <- "Classification Complete"
       add_message(new_message, rv)
       

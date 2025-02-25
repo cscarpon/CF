@@ -628,4 +628,51 @@ delete_all_files <- function(dir) {
   } else {
     print(paste("Directory does not exist:", dir))
   }
+} 
+
+align_las_icp_voxelized <- function(source_las, target_las, output_las_path, voxel_size = 0.2, max_iter = 50) {
+  
+  # Assign unique Point IDs before voxelization
+  source_las@data$PointID <- seq_len(nrow(source_las@data))
+  target_las@data$PointID <- seq_len(nrow(target_las@data))
+  
+  # Store original metadata
+  source_metadata <- source_las@data
+  target_metadata <- target_las@data
+  
+  # Voxelize both point clouds
+  las_source_voxel <- lidR::voxelize_points(source_las, voxel_size)
+  las_target_voxel <- lidR::voxelize_points(target_las, voxel_size)
+  
+  # Map metadata using original point indices (no need for FNN)
+  voxel_metadata <- target_metadata[las_target_voxel@data$point_source_id, ]
+  
+  # Convert voxelized LAS data to matrices
+  source_pts <- as.matrix(las_source_voxel@data[, c("X", "Y", "Z")])
+  target_pts <- as.matrix(las_target_voxel@data[, c("X", "Y", "Z")])
+  
+  # Perform ICP Alignment using icpmat()
+  icp_result <- Morpho::icpmat(target_pts, source_pts, iterations = 50, threads = 12)
+  
+  # Apply transformation to the target points
+  aligned_pts <- (icp_result$R %*% t(target_pts)) + icp_result$t
+  aligned_pts <- t(aligned_pts)  # Transpose back
+  
+  # Create new data frame with aligned points and original metadata
+  aligned_las_data <- data.frame(X = aligned_pts[,1], 
+                                 Y = aligned_pts[,2], 
+                                 Z = aligned_pts[,3])
+  
+  # Attach metadata from voxelized points
+  aligned_las_data <- cbind(aligned_las_data, voxel_metadata[, -which(names(voxel_metadata) %in% c("X", "Y", "Z"))])
+  
+  # Create new LAS object
+  aligned_las <- LAS(aligned_las_data)
+  
+  # Save aligned LAS file
+  lidR::writeLAS(aligned_las, output_las_path)
+  
+  message("ICP alignment with voxelization complete. Output saved to: ", output_las_path)
+  
+  return(aligned_las)
 }
