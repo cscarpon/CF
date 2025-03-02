@@ -29,6 +29,3 @@ library(FNN)  # Fast Nearest Neighbor search
 options(shiny.reactlog = TRUE)
 options(shiny.maxRequestSize = 4073741824)
 lidR::set_lidr_threads(6)
-
-
-
