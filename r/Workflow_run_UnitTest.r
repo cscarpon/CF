@@ -35,7 +35,16 @@ dir <- "./data/"
 mo_dir <- mo$new(dir)
 print(mo_dir$metadata)
 
+
+start.time <- Sys.time()  # Start timer
+end.time <- Sys.time()  # End timer
+time.taken <- end.time - start.time  # Calculate time difference
+
+start.time <- Sys.time()  # Start timer
 pc_14 <- spatial_container$new(mo_dir$metadata$file_path[3])
+end.time <- Sys.time()  # End timer
+time.taken_index15 <- end.time - start.time  # Calculate time difference
+print(time.taken_index15)
 pc_14$set_crs(26917)
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
@@ -44,14 +53,29 @@ pc_14$set_crs(26917)
 
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
+start.time <- Sys.time()  # Start timer
 pc_23 <- spatial_container$new(mo_dir$metadata$file_path[4])
 pc_23$set_crs(26917)
+end.time <- Sys.time()  # End timer
+time.taken_index23 <- end.time - start.time  # Calculate time difference
+print(time.taken_index23)
+
 
 #Generating the Masks
 
+start.time <- Sys.time()  # Start timer
 pc_14$mask <- mask_pc(pc_14$LPC)
+end.time <- Sys.time()  # End timer
+time.taken_mask14 <- end.time - start.time  # Calculate time difference
+print(time.taken_mask14)
+
 # pc_19$mask <- mask_pc(pc_19$LPC)
+
+start_time <- Sys.time()
 pc_23$mask <- mask_pc(pc_23$LPC)
+end_time <- Sys.time()
+time_taken_mask23 <- end_time - start_time
+print(time_taken_mask23)
 
 
 # adding the buildings
@@ -78,7 +102,13 @@ pc_23$mask <- mask_pc(pc_23$LPC)
 #Denoising
 
 # pc_14$LPC <- noise_filter_buildings(pc_14$LPC, pc_14$mask, buildings)
+
+start_time <- Sys.time()
 pc_14$LPC <- noise_filter(pc_14$LPC)
+end_time <- Sys.time()
+time_taken_denoise14 <- end_time - start_time
+print(time_taken_denoise14)
+
 unique(pc_14$LPC@data$Classification)
 
 # pc_19$LPC <- noise_filter_buildings(pc_19$LPC, pc_19$mask, buildings)
@@ -87,7 +117,14 @@ unique(pc_14$LPC@data$Classification)
 # unique(pc_19$LPC@data$Classification)
 # 
 # pc_23$LPC <- noise_filter_buildings(pc_23$LPC, pc_23$mask, buildings)
+
+start_time <- Sys.time()
 pc_23$LPC <- noise_filter(pc_23$LPC)
+end_time <- Sys.time()
+time_taken_denoise23 <- end_time - start_time
+print(time_taken_denoise23)
+
+
 
 source_path <- file.path("./tmp/source.laz")
 target_path <- file.path("./tmp/target.laz")
@@ -101,19 +138,25 @@ lidR::writeLAS(pc_23$LPC, target_path)
 
 source("./r/functions.R")
 # Example usage with morpho
+start_time <- Sys.time()
 aligned_las <- align_las_icp_voxelized(pc_14$LPC, pc_23$LPC, aligned_path)
-
+end_time <- Sys.time()
+time_taken_morpho <- end_time - start_time
+print(time_taken_morpho)
 
 # Source the Python script
 icp_module <- paste0(getwd(), "/py/icp_open3d.py")
-
 
 reticulate::use_condaenv("icp_conda")
 reticulate::source_python(icp_module)
   
   # Run ICP
+start_time <- Sys.time()
 icp_aligner <- Open3DICP(source_path, target_path, voxel_size = 0.05, icp_method = "point-to-plane")
 aligned_file_path <- icp_aligner$align()
+end_time <- Sys.time()
+time_taken_open3d <- end_time - start_time
+print(time_taken_open3d)
 
 # renv::use_python("C:/Users/cscar/anaconda3/envs/EMT_conda/python.exe")
 
@@ -136,13 +179,40 @@ pc_14A$mask <- mask_pc(pc_14A$LPC)
 
 #Generating the DTM and nDSM
 
+start_time <- Sys.time()
 pc_14A$to_dtm(1)
-# pc_19$to_dtm(1)
-pc_23$to_dtm(1)
+end_time <- Sys.time()
+time_taken_dtm14 <- end_time - start_time
+print(time_taken_dtm14)
 
+# pc_19$to_dtm(1)
+
+start_time <- Sys.time()
+pc_23$to_dtm(1)
+end_time <- Sys.time()
+time_taken_dtm23 <- end_time - start_time
+print(time_taken_dtm23)
+
+start_time <- Sys.time()
 pc_14A$to_ndsm(1)
+end_time <- Sys.time()
+time_taken_ndsm14 <- end_time - start_time
+print(time_taken_ndsm14)
+
+
 # pc_19$to_ndsm(1)
+start_time <- Sys.time()
 pc_23$to_ndsm(1)
+end_time <- Sys.time()
+time_taken_ndsm23 <- end_time - start_time
+print(time_taken_ndsm23)
+
+
+
+time_names <- list("Index 15" = time.taken_index15, "Index 23" = time.taken_index23, "Denoise 15" = time_taken_denoise14, "Denoise 23" = time_taken_denoise23, "DTM 15" = time_taken_dtm14, "DTM 23" = time_taken_dtm23, "nDSM 15" = time_taken_ndsm14, "nDSM 23" = time_taken_ndsm23,  "Open3D" = time_taken_open3d)
+
+
+
 
 # plot(pc_19$CHM)
 
