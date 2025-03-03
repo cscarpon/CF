@@ -9,6 +9,19 @@ addRasterLayer <- function(map, raster, name, color_palette) {
   return(map)
 }
 
+# Function to project and mask raster
+processRasterMask <- function(raster, mask) {
+  if (!is.null(raster) && !is.null(mask)) {
+    raster_m <- terra::project(raster, "EPSG:4326")
+    raster_m <- terra::mask(raster_m, mask)
+  } else if (!is.null(raster)) {
+    raster_m <- terra::project(raster, "EPSG:4326")
+  } else {
+    raster_m <- NULL
+  }
+  return(raster_m)
+}
+
 # Function to add legend
 addLegendLayer <- function(map, raster, title, layerId, color_palette) {
   if (!is.null(raster)) {
@@ -37,10 +50,10 @@ displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
     }
     
     # Process all rasters
-    dtm1_m <- processRaster(dtm1, area_mask)
-    ndsm1_m <- processRaster(ndsm1, area_mask)
-    dtm2_m <- processRaster(dtm2, area_mask)
-    ndsm2_m <- processRaster(ndsm2, area_mask)
+    dtm1_m <- processRasterMask(dtm1, area_mask)
+    ndsm1_m <- processRasterMask(ndsm1, area_mask)
+    dtm2_m <- processRasterMask(dtm2, area_mask)
+    ndsm2_m <- processRasterMask(ndsm2, area_mask)
     
     # Project ndsm_diff if it's not NULL
     if (!is.null(ndsm_diff)) {
@@ -228,6 +241,15 @@ add_message <- function(message, rv, session = session) {
   
   # Use the session to flush the console
   flush.console()
+}
+
+capture_output <- function(expr) {
+  temp <- tempfile()
+  sink(temp)
+  on.exit(sink())
+  on.exit(unlink(temp), add = TRUE)
+  eval(expr)
+  readLines(temp)
 }
 
 create_directories <- function(in_dir) {
