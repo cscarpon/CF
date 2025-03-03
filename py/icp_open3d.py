@@ -191,16 +191,4 @@ class Open3DICP:
         las.write(self.aligned_path)
         print(f"Saved aligned LAS file to {self.aligned_path} with CRS applied.")
 
- 
-# # Example Usage
-# if __name__ == "__main__":
-#     source_path = "F:/Thesis/TTP/Data/LAS/Aligned/TTP15A.laz"
-#     target_path = "F:/Thesis/TTP/Data/LAS/Aligned/TTP19A.laz"
 
-#     icp_aligner = Open3DICP(source_path, target_path, icp_method="point-to-plane")
-#     aligned_file = icp_aligner.align()
-
-#     if aligned_file:
-#         print(f"Aligned file created at: {aligned_file}")
-#     else:
-#         print("Alignment failed.")

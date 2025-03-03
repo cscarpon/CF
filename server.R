@@ -332,8 +332,8 @@ server = function(input, output, session) {
     
     showModal(modalDialog("Running ICP on Source and Target", footer = NULL))
     
-    source_path <- file.path("./tmp/source.laz")
-    target_path <- file.path("./tmp/target.laz")
+    source_path <- file.path(paste0(getwd(), "/tmp/source.laz"))
+    target_path <- file.path(paste0(getwd(), "/tmp/target.laz"))
     
     lidR::writeLAS(rv$sc1$LPC, source_path)
     lidR::writeLAS(rv$sc2$LPC, target_path)
