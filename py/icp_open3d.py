@@ -5,7 +5,7 @@ import os
 import pyproj
 
 class Open3DICP:
-    def __init__(self, source_path, target_path, voxel_size=0.05, icp_method="point-to-point"):
+    def __init__(self, source_path, target_path, voxel_size=0.05, icp_method="point-to-plane"):
         """
         Class to perform ICP alignment using Open3D while preserving LAS metadata.
 
