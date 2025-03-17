@@ -53,7 +53,7 @@ Mapping
 
 ## Windows Installation
 
-The FMT is currently built in Windows 11. 
+The cf is currently built in Windows 11. 
 
 To get started with the tool, you will need to download:
 
@@ -74,11 +74,11 @@ Windows requires that you set `PATH` variables to let Windows know where a progr
 
 ![alt text](images/clone.png)
 
-3. Paste that code into the terminal type `git clone https://github.com/cscarpon/FMT.git`
+3. Paste that code into the terminal type `git clone https://github.com/cscarpon/cf.git`
 
 ![alt text](images/download.png)
 
-4. Now change directory `cd` to the newly downloaded repo `cd FMT`
+4. Now change directory `cd` to the newly downloaded repo `cd cf`
 
 ![alt text](images/cd.png)
 
