@@ -5,7 +5,7 @@ library(terra)
 index23 <- st_read("D:/Data/Lidar/TRCA/combined.shp")
 
 ttp_bound <- st_read("F:/Thesis/TTP/Data/TTP_BoundaryV2.shp")
-ttp_bound <-st_transform(ttp_bound, crs = st_crs(index23))
+ttp_bound <- st_transform(ttp_bound, crs = st_crs(index23))
 ttp_bound_buff <- st_buffer(ttp_bound, 20)
 ttp_bound_buff <- st_transform(ttp_bound_buff, crs = 26917)
 
@@ -68,11 +68,12 @@ laz15_clip
 decimate <- lidR::decimate_points(laz15_clip, random(1))
 
 unique_points <- decimate@data %>%
-  dplyr::distinct(X, Y)  # Keep only unique X, Y pairs
+  dplyr::distinct(X, Y) # Keep only unique X, Y pairs
 
-coords_sf <- sf::st_as_sf(unique_points[, c("X", "Y")], 
-                          coords = c("X", "Y"), 
-                          crs = lidR::projection(laz15_clip))
+coords_sf <- sf::st_as_sf(unique_points[, c("X", "Y")],
+  coords = c("X", "Y"),
+  crs = lidR::projection(laz15_clip)
+)
 
 
 
@@ -98,4 +99,4 @@ return(final_sf)
 las15 <- read
 
 
-reticulate::use_condaenv("icp_conda") 
+reticulate::use_condaenv("icp_conda")

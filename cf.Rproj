@@ -1,4 +1,5 @@
 Version: 1.0
+ProjectId: 6589ce52-1fbd-4d63-9166-78ff29cf588f
 
 RestoreWorkspace: Default
 SaveWorkspace: Default
@@ -16,9 +17,5 @@ BuildType: Package
 PackageUseDevtools: Yes
 PackageInstallArgs: --no-multiarch --with-keep.source
 PackageRoxygenize: rd,collate,namespace,vignette
-
-PythonType: 
-PythonVersion:
-PythonPath: 
 
 SpellingDictionary: en_CA

@@ -1,6 +1,6 @@
 # Run this script to start the FMT
 source(file.path(paste0(getwd(), "/global.R")), local = TRUE)
-source(file.path(paste0(getwd(), "/server.R")), local =  TRUE)
+source(file.path(paste0(getwd(), "/server.R")), local = TRUE)
 source(file.path(paste0(getwd(), "/r/functions.R")), local = TRUE)
 source(file.path(paste0(getwd(), "/r/spatial_container.R")), local = TRUE)
 source(file.path(paste0(getwd(), "/r/meta_obj.R")), local = TRUE)

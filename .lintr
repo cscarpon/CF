@@ -1,0 +1,9 @@
+linters: 
+  linters_with_defaults() # see vignette("lintr")
+  encoding: "UTF-8"
+  line_length_linter: 120
+  object_usage_linter: true
+  assignment_linter: true
+  spaces_left_parentheses_linter: true
+  indentation_linter: 
+    indent_by: 4  # Enforce 4 spaces for indentation

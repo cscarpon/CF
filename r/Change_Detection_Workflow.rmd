@@ -89,15 +89,14 @@ pc_19$set_crs(32617)
 ## Conduct the ICP registration
 
 ```{r, echo=FALSE}
-
- # Use the conda environment
+# Use the conda environment
 reticulate::use_condaenv("fmt_env", required = TRUE)
 
 # Source the Python script
 icp_module <- paste0(getwd(), "/py/icp_pdal.py")
 
 reticulate::source_python(icp_module)
-        
+
 # Create instance of the ICP class
 icp_aligner <- pdal_icp(pc_14$filepath, pc_19filepath)
 
@@ -155,7 +154,6 @@ pc_14$to_chm(1)
 pc_19$to_chm(1)
 
 plot(pc_19$CHM)
-
 ```
 
 
@@ -170,7 +168,6 @@ aligned_chm <- process_raster(pc_14$CHM_raw, pc_19$CHM_raw, source_mask = pc_14$
 source_chm <- aligned_chm[[1]]
 target_chm <- aligned_chm[[2]]
 chm_mask <- aligned_chm[[3]]
-
 ```
 
 ## Displaying the results to the change detection plot
@@ -181,14 +178,12 @@ chm_mask <- aligned_chm[[3]]
 chm_diff_test <- CHM_diff_classify(source_chm, target_chm)
 
 plot_stats(chm_diff_test)
-
 ```
 
 ## Displaying the results to the leaflet map
 
 ```{r, echo=FALSE} 
+# Display the outputs/.
 
-# Display the outputs/. 
-
-displayMap(pc_14$DTM,pc_14$CHM, chm_diff_test, chm_mask)
+displayMap(pc_14$DTM, pc_14$CHM, chm_diff_test, chm_mask)
 ```

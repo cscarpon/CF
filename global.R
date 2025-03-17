@@ -1,5 +1,5 @@
 # Load libraries
-library(shiny) # builds the apps 
+library(shiny) # builds the apps
 library(shinyjs)
 library(dplyr) # data manipulation
 library(rgl) # used for colour gradients
@@ -23,7 +23,7 @@ library(shinyBS)
 library(shinyscreenshot)
 library(Morpho)
 library(Rvcg)
-library(FNN)  # Fast Nearest Neighbor search
+library(FNN) # Fast Nearest Neighbor search
 
 
 options(shiny.reactlog = TRUE)
