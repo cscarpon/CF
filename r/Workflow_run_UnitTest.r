@@ -41,7 +41,7 @@ end.time <- Sys.time() # End timer
 time.taken <- end.time - start.time # Calculate time difference
 
 start.time <- Sys.time() # Start timer
-pc_14 <- spatial_container$new(mo_dir$metadata$file_path[3])
+pc_14 <- spatial_container$new(mo_dir$metadata$file_path[4])
 end.time <- Sys.time() # End timer
 time.taken_index15 <- end.time - start.time # Calculate time difference
 print(time.taken_index15)
@@ -54,7 +54,7 @@ pc_14$set_crs(26917)
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
 start.time <- Sys.time() # Start timer
-pc_23 <- spatial_container$new(mo_dir$metadata$file_path[4])
+pc_23 <- spatial_container$new(mo_dir$metadata$file_path[7])
 pc_23$set_crs(26917)
 end.time <- Sys.time() # End timer
 time.taken_index23 <- end.time - start.time # Calculate time difference
@@ -126,35 +126,38 @@ print(time_taken_denoise23)
 
 
 
-source_path <- file.path("./tmp/source.laz")
-target_path <- file.path("./tmp/target.laz")
-aligned_path <- file.path("./data/aligned.laz")
+# source_path <- file.path("C:/Users/cscar/CF/tmp/source.laz")
+# target_path <- file.path("C:/Users/cscar/CF/tmp/target.laz")
+# aligned_path <- file.path("C:/Users/cscar/CF/data/aligned.laz")
 
+source_path <- file.path("C:/Users/cscar/CF/data/SB_veg_19_ground.laz")
+target_path <- file.path("C:/Users/cscar/CF/data/SB_veg_23_ground.laz")
+aligned_path <- file.path("C:/Users/cscar/CF/data/aligned.laz")
 
 
 lidR::writeLAS(pc_14$LPC, source_path)
 lidR::writeLAS(pc_23$LPC, target_path)
 
 
-source("./r/functions.R")
-# Example usage with morpho
-start_time <- Sys.time()
-aligned_las <- align_las_icp_voxelized(pc_14$LPC, pc_23$LPC, aligned_path)
-end_time <- Sys.time()
-time_taken_morpho <- end_time - start_time
-print(time_taken_morpho)
+# source("./r/functions.R")
+# # Example usage with morpho
+# start_time <- Sys.time()
+# aligned_las <- align_las_icp_voxelized(pc_14$LPC, pc_23$LPC, aligned_path)
+# end_time <- Sys.time()
+# time_taken_morpho <- end_time - start_time
+# print(time_taken_morpho)
 
 # Source the Python script
 # icp_module <- paste0(getwd(), "/py/icp_open3d.py")
 
-icp_module <- paste0(getwd(), "/py/icp_open3D_test.py")
+icp_module <- paste0(getwd(), "/py/icp_open3D.py")
 
 reticulate::use_condaenv("icp_conda")
 reticulate::source_python(icp_module)
 
 # Run ICP
 start_time <- Sys.time()
-icp_aligner <- Open3DICP(source_path, target_path, voxel_size = 0.05, icp_method = "point-to-plane", use_gpu = TRUE )
+icp_aligner <- Open3DICP(source_path, target_path, voxel_size = 0.05, icp_method = "point-to-plane")
 aligned_file_path <- icp_aligner$align()
 end_time <- Sys.time()
 time_taken_open3d <- end_time - start_time
@@ -231,15 +234,17 @@ ndsm_mask <- aligned_ndsm[[3]]
 
 # Function to generate CHM and classify the differences
 
-diff_class <- diff_classify(source_ndsm, target_ndsm)
+diff_class <- diff_classify_ndsm(source_ndsm, target_ndsm)
 
-plot_stats(diff_class)
+plot_ndsm_stats(diff_class)
 
 # difference_values <- diff_values(diff_class)
 
 # Display the outputs.
 
-displayMap(pc_14A$DTM, pc_14A$ndsm, pc_23$DTM, pc_23$ndsm, diff_class, ndsm_mask)
+# dtm1, ndsm1, dtm2, ndsm2, dtm_diff, ndsm_diff, area_mask
+
+displayMap(pc_14A$DTM, pc_14A$ndsm, pc_23$DTM, pc_23$ndsm, ndsm_diff = diff_class, dtm_diff = NULL,  ndsm_mask)
 
 # Get the values of the raster
 

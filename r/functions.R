@@ -1,13 +1,5 @@
 ## Web mapping
 
-# Function to add raster layer to shiny leaflet interface
-addRasterLayer <- function(map, raster, name, color_palette) {
-  if (!is.null(raster)) {
-    pal <- colorNumeric(color_palette, domain = values(raster), na.color = "transparent")
-    map <- addRasterImage(map, raster, colors = pal, group = name, maxBytes = Inf, opacity = 1)
-  }
-  return(map)
-}
 
 # Function to project and mask raster
 processRasterMask <- function(raster, mask) {
@@ -22,6 +14,15 @@ processRasterMask <- function(raster, mask) {
   return(raster_m)
 }
 
+# Function to add raster layer to shiny leaflet interface
+addRasterLayer <- function(map, raster, name, color_palette) {
+  if (!is.null(raster)) {
+    pal <- colorNumeric(color_palette, domain = values(raster), na.color = "transparent")
+    map <- addRasterImage(map, raster, colors = pal, group = name, maxBytes = Inf, opacity = 1)
+  }
+  return(map)
+}
+
 # Function to add legend
 addLegendLayer <- function(map, raster, title, layerId, color_palette) {
   if (!is.null(raster)) {
@@ -31,8 +32,9 @@ addLegendLayer <- function(map, raster, title, layerId, color_palette) {
   return(map)
 }
 
+
 # Function to display the map with the full set of rasters
-displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
+displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, dtm_diff, ndsm_diff, area_mask) {
   m <- leaflet::leaflet() %>%
     leaflet::addTiles() %>%
     leaflet::addScaleBar(position = "bottomleft") %>%
@@ -59,10 +61,19 @@ displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
   # Project ndsm_diff if it's not NULL
   if (!is.null(ndsm_diff)) {
     diff <- terra::project(ndsm_diff, "EPSG:4326")
-    diff <- terra::clamp(diff, 1, 5)
-    diff_round <- round(diff)
+    diff <- terra::clamp(diff, 1, 7)
+    diff_ndsm_round <- round(diff)
   } else {
-    diff_round <- NULL
+    diff_ndsm_round <- NULL
+  }
+  
+  # Project ndsm_diff if it's not NULL
+  if (!is.null(dtm_diff)) {
+    diff <- terra::project(dtm_diff, "EPSG:4326")
+    diff <- terra::clamp(diff, 1, 7)
+    diff_dtm_round <- round(diff)
+  } else {
+    diff_dtm_round <- NULL
   }
 
   # Add DTM and nDSM layers
@@ -72,11 +83,19 @@ displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
   m <- addRasterLayer(m, ndsm2_m, "nDSM (Target)", "magma")
 
   # Add ndsm_diff raster image with legend if it's not NULL
-  if (!is.null(diff_round)) {
-    colors <- c("#555599", "#b2abd2", "#f7f7f7", "#9AE696", "#448F3F") # Updated colors
-    pal_diff <- colorNumeric(palette = colors, domain = values(diff_round), na.color = "transparent")
+  if (!is.null(diff_ndsm_round)) {
+    colors <- c("#4d9221", "#a1d76a", "#e6f5d0", "#f7f7f7", "#fde0ef", "#e9a3c9", "#c51b7d") # Updated colors
+    pal_diff <- colorNumeric(palette = colors, domain = values(diff_ndsm_round), na.color = "transparent")
 
-    m <- addRasterImage(m, diff_round, colors = pal_diff, group = "Diff", maxBytes = Inf, opacity = 1)
+    m <- addRasterImage(m, diff_ndsm_round, colors = pal_diff, group = "Difference nDSM", maxBytes = Inf, opacity = 1)
+  }
+  
+  # Add ndsm_diff raster image with legend if it's not NULL
+  if (!is.null(diff_dtm_round)) {
+    colors <- c("#b35806", "#f1a340", "#fee0b6", "#f7f7f7", "#d8daeb", "#998ec3", "#542788") # Updated colors
+    pal_diff <- colorNumeric(palette = colors, domain = values(diff_dtm_round), na.color = "transparent")
+    
+    m <- addRasterImage(m, diff_dtm_round, colors = pal_diff, group = "Difference DTM", maxBytes = Inf, opacity = 1)
   }
 
   # Add mask polygons if area_mask is not NULL
@@ -90,7 +109,8 @@ displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
   if (!is.null(dtm2_m)) overlayGroups <- c(overlayGroups, "DTM (Target)")
   if (!is.null(ndsm1_m)) overlayGroups <- c(overlayGroups, "nDSM (Source)")
   if (!is.null(ndsm2_m)) overlayGroups <- c(overlayGroups, "nDSM (Target)")
-  if (!is.null(diff_round)) overlayGroups <- c(overlayGroups, "Diff")
+  if (!is.null(diff_dtm_round)) overlayGroups <- c(overlayGroups, "Difference DTM")
+  if (!is.null(diff_ndsm_round)) overlayGroups <- c(overlayGroups, "Difference nDSM")
   if (!is.null(area_mask)) overlayGroups <- c(overlayGroups, "Mask")
 
   m <- addLayersControl(m, overlayGroups = overlayGroups, options = layersControlOptions(collapsed = FALSE))
@@ -109,9 +129,14 @@ displayMap <- function(dtm1, ndsm1, dtm2, ndsm2, ndsm_diff, area_mask) {
   m <- addLegendLayer(m, ndsm1_m, "nDSM (Source)", "ndsm1Legend", "magma")
   m <- addLegendLayer(m, ndsm2_m, "nDSM (Target)", "ndsm2Legend", "magma")
 
-  if (!is.null(diff_round)) {
-    labels <- c("< -10", "-10 to -0.5", "-0.5 to 0.5", "0.5 to 10", "> 10")
-    m <- addLegend(m, colors = colors, labels = labels, position = "bottomright", title = "Change in Normalized Height Model (m)", layerId = "diffLegend", opacity = 1)
+  if (!is.null(diff_ndsm_round)) {
+    labels <- c("< -10", "-10 to -5", "-5 to -0.5", "-0.5 to 0.5", "0.5 to 5", "5 to 10", "> 10")
+    m <- addLegend(m, colors = colors, labels = labels, position = "bottomright", title = "Change in Normalized Height Model (m)", layerId = "diff1Legend", opacity = 1)
+  }
+  
+  if (!is.null(diff_dtm_round)) {
+    labels <- c("< -10", "-10 to -5", "-5 to -0.5", "-0.5 to 0.5", "0.5 to 5", "5 to 10", "> 10")
+    m <- addLegend(m, colors = colors, labels = labels, position = "bottomright", title = "Change in Digital Terrain Model (m)", layerId = "diff2Legend", opacity = 1)
   }
 
   return(m)
@@ -580,10 +605,12 @@ diff_classify_ndsm <- function(earlier, later) {
   # Classify the differences
   m <- c(
     -Inf, -10, 1,
-    -10, -0.5, 2,
-    -0.5, 0.5, 3,
-    0.5, 10, 4,
-    10, Inf, 5
+    -10, -5, 2,
+    -5, -0.5, 3,
+    -0.5, 0.5, 4,
+    0.5, 5, 5,
+    5, 10, 6,
+    10, Inf, 7
   )
   # Create a matrix with the ranges for reclassification
   rclmat <- matrix(m, ncol = 3, byrow = TRUE)
@@ -599,11 +626,13 @@ diff_classify_dtm <- function(earlier, later) {
   # Create a raster for the magnitude of change
   # Classify the differences
   m <- c(
-    -Inf, -5, 1,
-    -5, -0.1, 2,
-    -0.1, 0.1, 3,
-    0.1, 5, 4,
-    5, Inf, 5
+    -Inf, -10, 1,
+    -10, -5, 2,
+    -5, -0.5, 3,
+    -0.5, 0.5, 4,
+    0.5, 5, 5,
+    5, 10, 6,
+    10, Inf, 7
   )
   # Create a matrix with the ranges for reclassification
   rclmat <- matrix(m, ncol = 3, byrow = TRUE)
@@ -632,7 +661,7 @@ diff_numbers <- function(raster) {
 
 # Calculate statistics for a raster and return a data frame to plot in ggplot2
 
-plot_stats <- function(difference_raster) {
+plot_dtm_stats <- function(difference_raster) {
   # Get the values of the raster
   raster_values <- terra::values(difference_raster)
   raster_values <- raster_values[!is.na(raster_values)] # Remove NA values
@@ -643,20 +672,22 @@ plot_stats <- function(difference_raster) {
 
   # Define class labels (Shortened & Wrapped)
   class_labels <- c(
-    "Large Decrease (< -10m)",
-    "Decrease (-0.5m to -10m)",
-    "Minimal Change(-0.5m to 0.5m)",
-    "Gain (0.5m to 10m)",
-    "Large Gain (> 10m)"
+    "Large Decrease \n(< -10m)",
+    "Decrease \n(-5m to -10m)",
+    "Small Decrease \n(-0.5m to -5m)",
+    "Minimal Change \n(-0.5m to 0.5m)",
+    "Small Increase \n(0.5m to 5m)",
+    "Increase \n(5m to 10m)",
+    "Large Increase \n(> 10m)"
   )
 
   plot_data <- data.frame(
-    class = factor(names(class_counts), levels = c("1", "2", "3", "4", "5")),
+    class = factor(names(class_counts), levels = c("1", "2", "3", "4", "5", "6", "7")),
     count = as.numeric(class_counts),
     percentage = as.numeric(class_percentages)
   )
 
-  plot_data$class <- factor(plot_data$class, levels = c("1", "2", "3", "4", "5"), labels = class_labels)
+  plot_data$class <- factor(plot_data$class, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = class_labels)
 
   # Create the bar chart with wrapped labels
   ggplot2::ggplot(plot_data, aes(x = class, y = count, fill = class)) +
@@ -664,7 +695,78 @@ plot_stats <- function(difference_raster) {
     geom_text(aes(label = sprintf("%.1f%%", percentage)), vjust = -0.5, size = 4) +
     labs(x = "Loss and Gain", y = "Area (m^2)", fill = "Class") +
     ggtitle("Raster Statistics for Change Detection") +
-    scale_fill_manual(values = c("#555599", "#b2abd2", "#f7f7f7", "#9AE696", "#448F3F"), drop = FALSE) +
+    scale_fill_manual(
+      values = c("#b35806", "#f1a340", "#fee0b6", "#f7f7f7", "#d8daeb", "#998ec3", "#542788"),
+      labels = c(
+        "Large Decrease (< -10m)",
+        "Decrease (-5m to -10m)",
+        "Small Decrease (-0.5m to -5m)",
+        "Minimal Change (-0.5m to 0.5m)",
+        "Small Increase (0.5m to 5m)",
+        "Increase (5m to 10m)",
+        "Large Increase (> 10m)"
+      ),
+      drop = FALSE
+    ) +
+    theme_minimal(base_size = 15) +
+    theme(
+      axis.title = element_text(size = 16, face = "bold"),
+      axis.text = element_text(size = 14),
+      axis.text.x = element_text(size = 10, angle = 0, hjust = 0.5), # 🔹 Remove angle, center text
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.text = element_text(size = 10),
+      legend.key.size = unit(0.6, "cm"),
+      plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      legend.position = "right"
+    ) +
+    scale_y_continuous(labels = comma)
+}
+
+plot_ndsm_stats <- function(difference_raster) {
+  # Get the values of the raster
+  raster_values <- terra::values(difference_raster)
+  raster_values <- raster_values[!is.na(raster_values)] # Remove NA values
+  
+  class_counts <- table(raster_values)
+  total_cells <- sum(class_counts)
+  class_percentages <- (class_counts / total_cells) * 100
+  
+  # Define class labels (Shortened & Wrapped)
+  class_labels <- c(
+    "Large Decrease \n(< -10m)",
+    "Decrease \n(-5m to -10m)",
+    "Small Decrease \n(-0.5m to -5m)",
+    "Minimal Change \n(-0.5m to 0.5m)",
+    "Small Increase \n(0.5m to 5m)",
+    "Increase \n(5m to 10m)",
+    "Large Increase \n(> 10m)"
+  )
+  
+  plot_data <- data.frame(
+    class = factor(names(class_counts), levels = c("1", "2", "3", "4", "5", "6", "7")),
+    count = as.numeric(class_counts),
+    percentage = as.numeric(class_percentages)
+  )
+  
+  plot_data$class <- factor(plot_data$class, levels = c("1", "2", "3", "4", "5", "6", "7"), labels = class_labels)
+  
+  # Create the bar chart with wrapped labels
+  ggplot2::ggplot(plot_data, aes(x = class, y = count, fill = class)) +
+    geom_bar(stat = "identity", color = "black") +
+    geom_text(aes(label = sprintf("%.1f%%", percentage)), vjust = -0.5, size = 4) +
+    labs(x = "Decrease and Increase", y = "Area (m^2)", fill = "Class") +
+    ggtitle("Raster Statistics for Change Detection") +
+    scale_fill_manual(values = c("#4d9221", "#a1d76a", "#e6f5d0", "#f7f7f7", "#fde0ef", "#e9a3c9", "#c51b7d"),  
+    labels = c(
+      "Large Decrease (< -10m)",
+      "Decrease (-5m to -10m)",
+      "Small Decrease (-0.5m to -5m)",
+      "Minimal Change (-0.5m to 0.5m)",
+      "Small Increase (0.5m to 5m)",
+      "Increase (5m to 10m)",
+      "Large Increase (> 10m)"
+    ),
+    drop = FALSE) +
     theme_minimal(base_size = 15) +
     theme(
       axis.title = element_text(size = 16, face = "bold"),

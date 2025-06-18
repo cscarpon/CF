@@ -13,7 +13,8 @@ server <- function(input, output, session) {
     resolution = NULL,
     processing = NULL,
     union_mask = NULL,
-    classified_diff = NULL,
+    classified_DTM = NULL,
+    classified_nDSM = NULL,
     results = NULL,
     current_legend = NULL,
     out_num = 0,
@@ -348,9 +349,11 @@ server <- function(input, output, session) {
 
         if (!is.null(aligned_file_path)) {
           aligned_las <- lidR::readLAS(aligned_file_path)
+          
+          st_crs(aligned_las) <- st_crs(rv$sc1$LPC) # Ensure CRS matches source PC
 
           # Retain attributes while updating XYZ
-          rv$sc1$LPC <- pc_metadata(rv$sc1$LPC, aligned_las, rv$crs)
+          rv$sc1$LPC <- aligned_las
 
           add_message("ICP Alignment successful. LAS classification retained.", rv)
         }
@@ -562,17 +565,18 @@ server <- function(input, output, session) {
             diff_class <- terra::mask(classified_diff, rv$union_mask)
 
             # Save the processed raster in the rv list so it can be accessed elsewhere
-            rv$classified_diff <- diff_class
+            rv$classified_nDSM <- diff_class
           } else {
             classified_diff <- diff_classify_ndsm(rv$source_raster, rv$target_raster)
             diff_class <- terra::mask(classified_diff, rv$union_mask)
 
             # Save the processed raster in the rv list so it can be accessed elsewhere
-            rv$classified_diff <- diff_class
+            rv$classified_nDSM <- diff_class
 
             new_message <- "Classification Complete"
             add_message(new_message, rv)
           }
+          
         } else if (rv$processing == "DTM") {
           if (!is.null(rv$footprints)) {
             # Create a new raster with the same extent as SB_Change and 1m resolution
@@ -591,13 +595,13 @@ server <- function(input, output, session) {
             diff_class <- terra::mask(classified_diff, rv$union_mask)
 
             # Save the processed raster in the rv list so it can be accessed elsewhere
-            rv$classified_diff <- diff_class
+            rv$classified_DTM <- diff_class
           } else {
             classified_diff <- diff_classify_dtm(rv$source_raster, rv$target_raster)
             diff_class <- terra::mask(classified_diff, rv$union_mask)
 
             # Save the processed raster in the rv list so it can be accessed elsewhere
-            rv$classified_diff <- diff_class
+            rv$classified_DTM  <- diff_class
           }
         }
         new_message <- "Classification Complete"
@@ -634,29 +638,42 @@ server <- function(input, output, session) {
 
   ## Plot Results
 
-  observeEvent(input$plot_results, {
+  observeEvent(input$plot_nDSM_results, {
     output$plot2D <- renderPlot(
       {
-        req(rv$classified_diff)
+        req(rv$classified_nDSM)
 
         # Adjust plot margins dynamically
-        p <- plot_stats(rv$classified_diff) +
+        p <- plot_ndsm_stats(rv$classified_nDSM) +
           theme(plot.margin = margin(0, 0, 0, 0)) # Top, Right, Bottom, Left
 
         print(p) # Ensure the plot is printed correctly
       },
-      height = 400,
-      width = "auto"
+    ) # Adjust height if needed
+  })
+  
+  observeEvent(input$plot_DTM_results, {
+    output$plot2D <- renderPlot(
+      {
+        req(rv$classified_DTM)
+        
+        # Adjust plot margins dynamically
+        p <- plot_dtm_stats(rv$classified_DTM) +
+          theme(plot.margin = margin(0, 0, 0, 0)) # Top, Right, Bottom, Left
+        
+        print(p) # Ensure the plot is printed correctly
+      },
     ) # Adjust height if needed
   })
 
   ## Plot Webmap
+  
 
   observeEvent(input$plot_leaf, {
     tryCatch(
       {
         output$leafletmap <- renderLeaflet({
-          displayMap(rv$sc1$DTM, rv$sc1$ndsm, rv$sc2$DTM, rv$sc2$ndsm, rv$classified_diff, rv$union_mask)
+          displayMap(rv$sc1$DTM, rv$sc1$ndsm, rv$sc2$DTM, rv$sc2$ndsm, dtm_diff = rv$classified_DTM, ndsm_diff = rv$classified_nDSM,  rv$union_mask)
         })
       },
       error = function(e) {
@@ -676,8 +693,10 @@ server <- function(input, output, session) {
       legend <- "nDSM (Source)"
     } else if ("nDSM (Target)" %in% input$leafletmap_groups) {
       legend <- "nDSM (Target)"
-    } else if ("Diff" %in% input$leafletmap_groups) {
-      legend <- "Diff"
+    } else if ("Difference nDSM" %in% input$leafletmap_groups) {
+      legend <- "Difference nDSM"
+    } else if ("Difference DTM" %in% input$leafletmap_groups) {
+      legend <- "Difference DTM"
     }
 
     rv$current_legend <- legend
@@ -714,13 +733,21 @@ server <- function(input, output, session) {
             values = values(rv$sc2$ndsm), position = "bottomright", title = "nDSM (Target)",
             layerId = "ndsm2Legend", opacity = 1
           )
-      } else if (rv$current_legend == "Diff") {
+      } else if (rv$current_legend == "Difference nDSM") {
         leafletProxy("leafletmap") %>%
           addLegend(
-            colors = c("#6cBD66", "#9AE696", "#f7f7f7", "#b2abd2", "#555599"),
-            labels = c("> 10", "0.5 to 10", "-0.5 to 0.5", "-10 to -0.5", "< -10"),
-            position = "bottomright", title = "Change in Normalized Surface Height (m)",
-            layerId = "diffLegend", opacity = 1
+            colors = c("#4d9221", "#a1d76a", "#e6f5d0", "#f7f7f7", "#fde0ef", "#e9a3c9", "#c51b7d" ),
+            labels = c("> 10m Gain", "5m to 10m Gain ", "0.5m to 5m Gain",  "-0.5m to 0.5m No Change", "-0.5m to -5m Decrease", "-5m to 10m  Decrease", "< -10m Decrease"),
+            position = "bottomright", title = "Change in Normalized Surface Height",
+            layerId = "diff1Legend", opacity = 1
+          )
+      } else if (rv$current_legend == "Difference DTM") {
+        leafletProxy("leafletmap") %>%
+          addLegend(
+            colors = c("#b35806", "#f1a340", "#fee0b6", "#f7f7f7", "#d8daeb", "#998ec3", "#542788"),
+            labels = c("> 10m Gain", "5m to 10m Gain ", "0.5m to 5m Gain",  "-0.5m to 0.5m No Change", "-0.5m to -5m Decrease", "-5m to 10m  Decrease", "< -10m Decrease"),
+            position = "bottomright", title = "Change in the Digital Terrain Model",
+            layerId = "diff2Legend", opacity = 1
           )
       }
     }
@@ -859,7 +886,7 @@ server <- function(input, output, session) {
 
     # Delete specific files from in_dir (retain base files)
     if (dir.exists(in_dir)) {
-      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "TTP15.laz", "TTP19.laz", "TTP23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
+      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "SB_veg_19.laz", "SB_veg_23.laz", "TTP15.laz", "TTP19.laz", "TTP23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
       uploaded_files <- list.files(in_dir, full.names = TRUE)
       print("Uploaded files at session end:")
       print(uploaded_files)

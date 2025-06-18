@@ -21,11 +21,15 @@ library(nngeo)
 library(shinyWidgets)
 library(shinyBS)
 library(shinyscreenshot)
-library(Morpho)
 library(Rvcg)
-library(FNN) # Fast Nearest Neighbor search
+
+# load scripts
+source(file.path(paste0(getwd(), "/r/functions.R")), local = TRUE)
+source(file.path(paste0(getwd(), "/r/spatial_container.R")), local = TRUE)
+source(file.path(paste0(getwd(), "/r/meta_obj.R")), local = TRUE)
 
 
+# setting options
 options(shiny.reactlog = TRUE)
 options(shiny.maxRequestSize = 4073741824)
-lidR::set_lidr_threads(6)
+lidR::set_lidr_threads(12)

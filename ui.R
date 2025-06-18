@@ -196,7 +196,8 @@ ui <- navbarPage(
           actionButton("plot_source", "Plot Source Las", class = "btn"),
           actionButton("plot_target", "Plot Target Las", class = "btn"),
           actionButton("plot_leaf", "Plot to Leaflet", class = "btn"),
-          actionButton("plot_results", "Plot Results", class = "btn")
+          actionButton("plot_DTM_results", "Plot DTM Results", class = "btn"),
+          actionButton("plot_nDSM_results", "Plot nDSM Results", class = "btn")
         ),
         h4("Data Saving"),
         selectInput("io_obj", "Select PC to Save", choices = NULL, width = "100%"),
@@ -214,7 +215,7 @@ ui <- navbarPage(
           tabsetPanel(
             tabPanel("Leaflet Map",leafletOutput("leafletmap", width = "70%", height = "63vh")),
               tabPanel("3D Plot", rglwidgetOutput("plot3D", width = "70%", height = "63vh")),
-              tabPanel("2D Plot",  plotOutput("plot2D", width = "70%", height = "90vh")),
+              tabPanel("2D Plot",  plotOutput("plot2D", width = "70%", height = "60vh")),
               tabPanel("Directory Data", tableOutput("plotmeta"))
             )
         ),
