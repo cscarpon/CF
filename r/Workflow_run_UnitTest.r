@@ -41,11 +41,12 @@ end.time <- Sys.time() # End timer
 time.taken <- end.time - start.time # Calculate time difference
 
 start.time <- Sys.time() # Start timer
-pc_14 <- spatial_container$new(mo_dir$metadata$file_path[4])
+pc_14 <- spatial_container$new(mo_dir$metadata$file_path[3])
 end.time <- Sys.time() # End timer
 time.taken_index15 <- end.time - start.time # Calculate time difference
 print(time.taken_index15)
 pc_14$set_crs(26917)
+
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
 # pc_19 <- spatial_container$new(mo_dir$metadata$file_path[4])
@@ -54,7 +55,7 @@ pc_14$set_crs(26917)
 
 # # path_19 <- "data/TTP_2019_decimate.laz"
 start.time <- Sys.time() # Start timer
-pc_23 <- spatial_container$new(mo_dir$metadata$file_path[7])
+pc_23 <- spatial_container$new(mo_dir$metadata$file_path[4])
 pc_23$set_crs(26917)
 end.time <- Sys.time() # End timer
 time.taken_index23 <- end.time - start.time # Calculate time difference
@@ -109,7 +110,6 @@ end_time <- Sys.time()
 time_taken_denoise14 <- end_time - start_time
 print(time_taken_denoise14)
 
-unique(pc_14$LPC@data$Classification)
 
 # pc_19$LPC <- noise_filter_buildings(pc_19$LPC, pc_19$mask, buildings)
 # pc_19$LPC <- noise_filter(pc_19$LPC)
@@ -185,7 +185,7 @@ pc_14A$mask <- mask_pc(pc_14A$LPC)
 # Generating the DTM and nDSM
 
 start_time <- Sys.time()
-pc_14A$to_dtm(1)
+pc_14$to_dtm(1)
 end_time <- Sys.time()
 time_taken_dtm14 <- end_time - start_time
 print(time_taken_dtm14)
@@ -199,7 +199,7 @@ time_taken_dtm23 <- end_time - start_time
 print(time_taken_dtm23)
 
 start_time <- Sys.time()
-pc_14A$to_ndsm(1)
+pc_14$to_ndsm(1)
 end_time <- Sys.time()
 time_taken_ndsm14 <- end_time - start_time
 print(time_taken_ndsm14)
@@ -212,17 +212,14 @@ end_time <- Sys.time()
 time_taken_ndsm23 <- end_time - start_time
 print(time_taken_ndsm23)
 
-
-
 time_names <- list("Index 15" = time.taken_index15, "Index 23" = time.taken_index23, "Denoise 15" = time_taken_denoise14, "Denoise 23" = time_taken_denoise23, "DTM 15" = time_taken_dtm14, "DTM 23" = time_taken_dtm23, "nDSM 15" = time_taken_ndsm14, "nDSM 23" = time_taken_ndsm23, "Open3D" = time_taken_open3d)
-
-
 
 
 # plot(pc_19$CHM)
 
 # This function aligns the two rasters and returns aligned raster objects.
-aligned_ndsm <- process_raster(source = pc_14A$ndsm_raw, target = pc_23$ndsm_raw, source_mask = pc_14A$mask, target_mask = pc_23$mask, method = "bilinear")
+aligned_ndsm <- process_raster(source = pc_14$ndsm_raw, target = pc_23$ndsm_raw, source_mask = pc_14$mask, target_mask = pc_23$mask, method = "bilinear")
+aligned_DTM <- process_raster(source = pc_14$DTM_raw, target = pc_23$DTM_raw, source_mask = pc_14$mask, target_mask = pc_23$mask, method = "bilinear")
 
 source("./r/functions.R")
 ################################################
@@ -231,6 +228,31 @@ source("./r/functions.R")
 source_ndsm <- aligned_ndsm[[1]]
 target_ndsm <- aligned_ndsm[[2]]
 ndsm_mask <- aligned_ndsm[[3]]
+
+difference_ndsm <- target_ndsm - source_ndsm
+
+plot(difference_ndsm)
+
+terra::writeRaster(difference_ndsm, "F:/Thesis/Data/CF/Results/ndsm_diff.tif", gdal = c("COMPRESS=LZW"))
+
+source_DTM <- aligned_DTM[[1]]
+target_DTM <- aligned_DTM[[2]]
+DTM_mask <- aligned_DTM[[3]]
+
+difference_DTM <- target_DTM - source_DTM
+
+
+classified_diff <- diff_classify_dtm(source_DTM , target_DTM)
+diff_class <- terra::mask(classified_diff, DTM_mask)
+
+plot(diff_class)
+
+# Save the processed raster in the rv list so it can be accessed elsewhere
+rv$classified_DTM  <- diff_class
+
+plot(difference_DTM)
+
+terra::writeRaster(difference_DTM, "F:/Thesis/Data/CF/Results/DTM_diff.tif", gdal = c("COMPRESS=LZW"))
 
 # Function to generate CHM and classify the differences
 
@@ -244,7 +266,7 @@ plot_ndsm_stats(diff_class)
 
 # dtm1, ndsm1, dtm2, ndsm2, dtm_diff, ndsm_diff, area_mask
 
-displayMap(pc_14A$DTM, pc_14A$ndsm, pc_23$DTM, pc_23$ndsm, ndsm_diff = diff_class, dtm_diff = NULL,  ndsm_mask)
+displayMap(pc_14$DTM, pc_14$ndsm, pc_23$DTM, pc_23$ndsm, ndsm_diff = diff_class, dtm_diff = NULL,  ndsm_mask)
 
 # Get the values of the raster
 

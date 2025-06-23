@@ -22,6 +22,8 @@ ui <- navbarPage(
         /* ===================== INTRODUCTION PAGE ===================== */
         .intro-page {
             padding: 20px;
+            height: 100vh;
+            overflow-y: auto;
         }
         
         /* ===================== SIDEBAR ===================== */
@@ -193,11 +195,7 @@ ui <- navbarPage(
         ),
         h4("Plotting"),
         div(class = "button-container",
-          actionButton("plot_source", "Plot Source Las", class = "btn"),
-          actionButton("plot_target", "Plot Target Las", class = "btn"),
-          actionButton("plot_leaf", "Plot to Leaflet", class = "btn"),
-          actionButton("plot_DTM_results", "Plot DTM Results", class = "btn"),
-          actionButton("plot_nDSM_results", "Plot nDSM Results", class = "btn")
+          actionButton("plot_leaf", "Plot to Leaflet", class = "btn")
         ),
         h4("Data Saving"),
         selectInput("io_obj", "Select PC to Save", choices = NULL, width = "100%"),
@@ -206,6 +204,8 @@ ui <- navbarPage(
           actionButton("save_las", "Save LAS", class = "btn"),
           actionButton("save_dtm", "Save DTM", class = "btn"),
           actionButton("save_ndsm", "Save nDSM", class = "btn"),
+          actionButton("save_classified_dtm", "Save Classified DTM", class = "btn"),
+          actionButton("save_classified_ndsm", "Save Classified nDSM", class = "btn"),
           actionButton("save_mask", "Save Mask", class = "btn"),
           downloadButton("downloadData", "Save All", class = "btn")
         )
@@ -214,8 +214,51 @@ ui <- navbarPage(
         div(class = "main-content",
           tabsetPanel(
             tabPanel("Leaflet Map",leafletOutput("leafletmap", width = "70%", height = "63vh")),
-              tabPanel("3D Plot", rglwidgetOutput("plot3D", width = "70%", height = "63vh")),
-              tabPanel("2D Plot",  plotOutput("plot2D", width = "70%", height = "60vh")),
+            tabPanel("3D Plot",
+              div(
+                style = "position: relative; width: 100%; height: 63vh;",
+                
+                # 🔹 Floating dropdown for SC1 or SC2
+                div(
+                  style = "
+                  position: absolute;
+                  top: 2vh;
+                  left: 2vw;
+                  background-color: rgba(255,255,255,0.95);
+                  padding: 0.5em 1em;
+                  border-radius: 0.5em;
+                  z-index: 10;
+                ",
+                  selectInput("selected_scene", label = NULL, choices = NULL)
+                ),
+                
+                # 🔹 3D plot widget
+                rglwidgetOutput("plot3D", width = "70%", height = "63vh")
+              )
+            ),
+              tabPanel(
+                "2D Plot",
+                div(
+                  style = "position: relative; width: 100%; height: 60vh;",
+                  
+                  # 🔹 Floating dropdown using relative sizing
+                  div(
+                    style = "
+                    position: absolute;
+                    top: 2vh;
+                    left: 2vw;
+                    background-color: rgba(255,255,255,0.95);
+                    padding: 0.5em 1em;
+                    border-radius: 0.5em;
+                    z-index: 10;
+                  ",
+                    selectInput("which_plot_2d", NULL, choices = c("DTM", "nDSM"), selected = "nDSM")
+                  ),
+                  
+                  # 🔹 Plot beneath the dropdown
+                  plotOutput("plot2D", width = "70%", height = "60vh")
+                )
+              ),
               tabPanel("Directory Data", tableOutput("plotmeta"))
             )
         ),

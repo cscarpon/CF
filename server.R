@@ -50,10 +50,13 @@ server <- function(input, output, session) {
   rv <- reactiveValues(console_output = list(messages = "Welcome to CF"))
 
   output$console_output <- renderUI({
+    total_messages <- length(rv$console_output)
+    
     lapply(seq_along(rv$console_output), function(i) {
+      message_number <- total_messages - i + 1
       div(
         style = "border: 1px solid #ccc; padding: 5px; margin: 5px; background-color: #f9f9f9;",
-        HTML(paste0("<strong>Message ", i, ":</strong><br>", rv$console_output[[i]]))
+        HTML(paste0("<strong>Message ", message_number, ":</strong><br>", rv$console_output[[i]]))
       )
     })
   })
@@ -139,7 +142,7 @@ server <- function(input, output, session) {
 
     updateSelectInput(session, "selected_buildings", choices = shp_names)
   })
-
+  
   observeEvent(input$PC_confirm, {
     showModal(modalDialog("Initializing LAS and LAS Index", footer = NULL))
     # Ensure the selections are made
@@ -236,6 +239,23 @@ server <- function(input, output, session) {
       add_message(new_message, rv)
 
       updateSelectInput(session, "io_obj", choices = c("sc1" = "sc1", "sc2" = "sc2"))
+      
+      laz_names <- c(input$selected_source, input$selected_target)
+      
+      updateSelectInput(
+        session,
+        "selected_scene",
+        choices = laz_names,
+        selected = input$selected_source
+      )
+      
+      # Update dropdown to show filenames but return "sc1" or "sc2" internally
+      updateSelectInput(
+        session,
+        "io_obj",
+        choices = setNames(c("sc1", "sc2"), c(input$selected_source, input$selected_target)),
+        selected = "sc1"
+      )
 
       output$leafletmap <- renderLeaflet({
         displayIndex(sc1$index)
@@ -616,59 +636,47 @@ server <- function(input, output, session) {
 
 
   ## Plot Source LAS
-  observeEvent(input$plot_source, {
-    output$plot3D <- rgl::renderRglwidget({
-      req(rv$sc1$LPC)
-      pc1_decimate <- lidR::decimate_points(rv$sc1$LPC, random(1))
-      lidR::plot(pc1_decimate, bg = "white")
-      rglwidget()
-    })
-  })
-
-  ## Plot Target LAS
-
-  observeEvent(input$plot_target, {
-    output$plot3D <- rgl::renderRglwidget({
-      req(rv$sc2$LPC)
-      pc2_decimate <- lidR::decimate(rv$sc2$LPC, random(1))
-      lidR::plot(pc2_decimate, bg = "white")
+  observeEvent(input$selected_scene, {
+    output$plot3D <- renderRglwidget({
+      req(input$selected_scene, input$selected_source, input$selected_target)
+      
+      # Determine whether user selected source or target file
+      selected_file <- input$selected_scene
+      las <- NULL
+      
+      if (selected_file == input$selected_source) {
+        las <- rv$sc1$LPC
+      } else if (selected_file == input$selected_target) {
+        las <- rv$sc2$LPC
+      }
+      
+      req(las)
+      pc_decimate <- lidR::decimate_points(las, random(1))
+      lidR::plot(pc_decimate, bg = "white")
       rglwidget()
     })
   })
 
   ## Plot Results
 
-  observeEvent(input$plot_nDSM_results, {
-    output$plot2D <- renderPlot(
-      {
+  observeEvent(input$which_plot_2d, {
+    output$plot2D <- renderPlot({
+      req(input$which_plot_2d)
+      
+      if (input$which_plot_2d == "DTM") {
+        req(rv$classified_DTM)
+        p <- plot_dtm_stats(rv$classified_DTM)
+      } else if (input$which_plot_2d == "nDSM") {
         req(rv$classified_nDSM)
-
-        # Adjust plot margins dynamically
-        p <- plot_ndsm_stats(rv$classified_nDSM) +
-          theme(plot.margin = margin(0, 0, 0, 0)) # Top, Right, Bottom, Left
-
-        print(p) # Ensure the plot is printed correctly
-      },
-    ) # Adjust height if needed
+        p <- plot_ndsm_stats(rv$classified_nDSM)
+      }
+      
+      p + theme(plot.margin = margin(0, 0, 0, 0))
+    })
   })
   
-  observeEvent(input$plot_DTM_results, {
-    output$plot2D <- renderPlot(
-      {
-        req(rv$classified_DTM)
-        
-        # Adjust plot margins dynamically
-        p <- plot_dtm_stats(rv$classified_DTM) +
-          theme(plot.margin = margin(0, 0, 0, 0)) # Top, Right, Bottom, Left
-        
-        print(p) # Ensure the plot is printed correctly
-      },
-    ) # Adjust height if needed
-  })
-
   ## Plot Webmap
   
-
   observeEvent(input$plot_leaf, {
     tryCatch(
       {
@@ -736,16 +744,16 @@ server <- function(input, output, session) {
       } else if (rv$current_legend == "Difference nDSM") {
         leafletProxy("leafletmap") %>%
           addLegend(
-            colors = c("#4d9221", "#a1d76a", "#e6f5d0", "#f7f7f7", "#fde0ef", "#e9a3c9", "#c51b7d" ),
-            labels = c("> 10m Gain", "5m to 10m Gain ", "0.5m to 5m Gain",  "-0.5m to 0.5m No Change", "-0.5m to -5m Decrease", "-5m to 10m  Decrease", "< -10m Decrease"),
+            colors = c("#448F3F", "#9AE696","#f7f7f7", "#b2abd2", "#555599" ),
+            labels = c("> 10m Increase", "0.5m to 10m Increase",   "-0.5m to 0.5m No Change", "-0.5m to -10m Decrease",  "< -10m Large Decrease"),
             position = "bottomright", title = "Change in Normalized Surface Height",
             layerId = "diff1Legend", opacity = 1
           )
       } else if (rv$current_legend == "Difference DTM") {
         leafletProxy("leafletmap") %>%
           addLegend(
-            colors = c("#b35806", "#f1a340", "#fee0b6", "#f7f7f7", "#d8daeb", "#998ec3", "#542788"),
-            labels = c("> 10m Gain", "5m to 10m Gain ", "0.5m to 5m Gain",  "-0.5m to 0.5m No Change", "-0.5m to -5m Decrease", "-5m to 10m  Decrease", "< -10m Decrease"),
+            colors = c("#e66101", "#fdb863", "#f7f7f7", "#b2abd2", "#5e3c99"),
+            labels = c("> 10m Increase", "0.5m to 10m Increase",   "-0.5m to 0.5m No Change", "-0.5m to -10m Decrease",  "< -10m Large Decrease"),
             position = "bottomright", title = "Change in the Digital Terrain Model",
             layerId = "diff2Legend", opacity = 1
           )
@@ -840,6 +848,26 @@ server <- function(input, output, session) {
     path <- paste0(out_dir, "/", file_name, "_ndsm.tif")
     rv$sc2$save_ndsm(path)
   })
+  
+  observeEvent(input$save_classified_dtm, {
+    req(rv$classified_DTM, rv$out_dir)
+    
+    filename <- paste0("classified_dtm_", Sys.Date(), ".tif")
+    path <- file.path(rv$out_dir, filename)
+    
+    terra::writeRaster(rv$classified_DTM, path, overwrite = TRUE)
+    print(paste("Classified DTM saved to:", path))
+  })
+  
+  observeEvent(input$save_classified_ndsm, {
+    req(rv$classified_nDSM, rv$out_dir)
+    
+    filename <- paste0("classified_ndsm_", Sys.Date(), ".tif")
+    path <- file.path(rv$out_dir, filename)
+    
+    terra::writeRaster(rv$classified_nDSM, path, overwrite = TRUE)
+    print(paste("Classified nDSM saved to:", path))
+  })
 
   observeEvent(input$save_mask, {
     # Ensure selected_las() is not NULL
@@ -886,7 +914,7 @@ server <- function(input, output, session) {
 
     # Delete specific files from in_dir (retain base files)
     if (dir.exists(in_dir)) {
-      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "SB_veg_19.laz", "SB_veg_23.laz", "TTP15.laz", "TTP19.laz", "TTP23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
+      base_files <- c("SB_15_dec.laz", "SB_19_dec.laz", "SB_23_dec.laz", "SB_19.laz", "SB_23.laz", "SB_veg_19_Full.laz", "SB_veg_23_Full.laz", "TTP15.laz", "TTP19.laz", "TTP23.laz", "SB_Buildings.shp", "SB_Buildings.dbf", "SB_Buildings.shx", "SB_Buildings.prj")
       uploaded_files <- list.files(in_dir, full.names = TRUE)
       print("Uploaded files at session end:")
       print(uploaded_files)
